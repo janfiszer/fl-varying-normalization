@@ -60,11 +60,43 @@ def normalize_white_stripe(image_flair, norm_value=1.0):
     return white_stripe_flair
 
 
+def normalize_zscore(image):
+    return (image - np.mean(image)) / np.std(image)
+
+
 def generate_scans_paths(data_dir, suffix="flair"):
     # returns the relative path from the data_dir
     volumes_path = [os.path.join(data_dir, subject_dir, f"{subject_dir}_{suffix}.nii.gz") for subject_dir in os.listdir(data_dir)]
 
     return volumes_path
+
+
+def plot_single_histogram_and_slice(volume, slice_index, brain_mask, filename):
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+
+    # Ensure the axes indexing works for multiple or single arrays
+    ax_hist = axes[0]
+    ax_image = axes[1]
+
+    # Filter out the background
+    positive_values = volume[brain_mask]
+
+    # Plot histogram
+    ax_hist.hist(positive_values, bins=100, color='blue', edgecolor='black')
+    ax_hist.set_title(f'Histogram of pixel intensities values.')
+    ax_hist.set_xlabel('Pixel intensity')
+    ax_hist.set_ylabel('Frequency')
+
+    # Extract a 2D slice (middle slice along the first axis)
+    middle_slice = volume[:, :, slice_index]
+
+    # Plot 2D slice as an image
+    im = ax_image.imshow(middle_slice, cmap='grey')
+    ax_image.set_title(f'Slice {slice_index}')
+    plt.colorbar(im, ax=ax_image)
+
+    plt.tight_layout()
+    plt.savefig(filename)
 
 
 def plot_histograms_one_slice(volumes, slice_index, brain_mask):
@@ -103,18 +135,20 @@ def plot_histograms_one_slice(volumes, slice_index, brain_mask):
     plt.show()
 
 
-def normalize_all_from_dir(data_dir, output_dir, path_from_local_dir: Dict, normalizers):
-    modalities_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True)
+def normalize_all_from_dir(data_dir, output_dir, path_from_local_dir: Dict, normalizers, save_histogram_slice_plots=True):
+    modalities_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True, n_patients=2)
 
     # splitting the datasets into n subsets (n number of normalizers)
     n_normalization = len(normalizers)
     subset_size = len(list(modalities_filepaths.values())[0]) // n_normalization
-    normalizers_with_indices_ranges = {normalizer: (i*subset_size, (i+1)+subset_size) for i, normalizer in enumerate(normalizers)}
+    normalizers_with_indices_ranges = {normalizer: (i*subset_size, (i+1)*subset_size) for i, normalizer in enumerate(normalizers)}
 
     # for each modality:
     # load the data and normalize the data with the given normalizer
     # store it in a new directory
     for modality, filepaths in modalities_filepaths.items():
+        modality_path = os.path.join(output_dir, modality)
+        fop.try_create_dir(modality_path)
         for normalizer, indices_range in normalizers_with_indices_ranges.items():
             dedicated_filepaths = filepaths[indices_range[0]: indices_range[1]]
             raw_volumes = []
@@ -129,7 +163,15 @@ def normalize_all_from_dir(data_dir, output_dir, path_from_local_dir: Dict, norm
 
                 # TODO: only substantial part of the brain
                 # TODO: save as 3D volume?
-                save_path = os.path.join(output_dir, f"{str(normalizer)}_{dedicated_filepaths[i]}")
+                patient_file_name = os.path.basename(dedicated_filepaths[i]).split('.')[0]
+
+                # saving histogram and slice plot
+                if save_histogram_slice_plots:
+                    image_path = os.path.join(modality_path, f"{str(normalizer)}_{patient_file_name}.png")
+                    plot_single_histogram_and_slice(normalized_volume, 110, volume > 0, image_path)
+
+                # saving the volume as a 3D numpy array
+                save_path = os.path.join(modality_path, f"{str(normalizer)}_{patient_file_name}")
                 np.save(save_path, normalized_volume)
 
 
@@ -174,8 +216,12 @@ def main():
 
 
 if __name__ == '__main__':
-    paths_from_local_dirs = {"t1": "*t1.nii.gz", "t2": "*t2.nii.gz"}
-    normalizers = [Normalizer("FCM", normalize_fcm), Normalizer("WhiteStripe", normalize_white_stripe)]
-    normalize_all_from_dir("C:\\Users\\JanFiszer\\data\\mri\\flair_volumes", "C:\\Users\\JanFiszer\\data\\mri\\normalized",
-                           paths_from_local_dirs, normalizers)
+    paths_from_local_dirs = {"t1": "*t1.nii.gz", "t2": "*t2.nii.gz", "flair": "*flair.nii.gz"}
+    normalizers = [Normalizer("WhiteStripe", normalize_white_stripe),
+                   Normalizer("NoNorm", lambda x: x)]
+
+    normalize_all_from_dir("C:\\Users\\JanFiszer\\data\\mri\\flair_volumes",
+                           "C:\\Users\\JanFiszer\\data\\mri\\normalized",
+                           paths_from_local_dirs,
+                           normalizers)
 
