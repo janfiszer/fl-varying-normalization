@@ -129,7 +129,7 @@ def normalize_all_from_dir(data_dir, output_dir, path_from_local_dir: Dict, norm
 
                 # TODO: only substantial part of the brain
                 # TODO: save as 3D volume?
-                save_path = os.path.join(output_dir, f"{str(normalizer)}_{i}")
+                save_path = os.path.join(output_dir, f"{str(normalizer)}_{dedicated_filepaths[i]}")
                 np.save(save_path, normalized_volume)
 
 
