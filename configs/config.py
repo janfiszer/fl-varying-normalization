@@ -12,7 +12,7 @@ from configs.enums import *
 # Variable set to true for testing locally
 # It affects i.a. filepaths construction, server address.
 # Also determines if multiple workers are used by DataLoader (see PyTorch dataloader)
-LOCAL = True
+LOCAL = False
 NODE_FILENAME = "SERVERNODE.txt"
 
 # DEEP LEARNING PARAMETERS
@@ -78,4 +78,4 @@ EVAL_DATA_DIRS = [path.join(DATA_ROOT_DIR, "lgg_26", "test"),
 now = datetime.datetime.now()
 # CENTRALIZED_DIR = f"{DATA_ROOT_DIR}/trained_models/model-mgh-centralized-{LOSS_TYPE.name}-ep{N_EPOCHS_CENTRALIZED}-{TRANSLATION[0].name}{TRANSLATION[1].name}-lr{LEARNING_RATE}-{now.date()}-{now.hour}h"
 _REPRESENTATIVE_WORD = CLIENT_TYPE if CLIENT_TYPE == ClientTypes.FED_BN or CLIENT_TYPE == ClientTypes.FED_MRI else AGGREGATION_METHOD
-TRAINED_MODEL_SERVER_DIR = f"{DATA_ROOT_DIR}/trained_models/model-{_REPRESENTATIVE_WORD.name}-{LOSS_TYPE.name}-{TRANSLATION[0].name}{TRANSLATION[1].name}-lr{LEARNING_RATE}-rd{N_ROUNDS}-ep{N_EPOCHS_CLIENT}-{now.date()}"
+# TRAINED_MODEL_SERVER_DIR = f"{DATA_ROOT_DIR}/trained_models/model-{_REPRESENTATIVE_WORD.name}-{LOSS_TYPE.name}-{TRANSLATION[0].name}{TRANSLATION[1].name}-lr{LEARNING_RATE}-rd{N_ROUNDS}-ep{N_EPOCHS_CLIENT}-{now.date()}"
