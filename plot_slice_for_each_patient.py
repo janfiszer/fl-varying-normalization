@@ -1,11 +1,10 @@
 import os
-import sys
 import matplotlib.pyplot as plt
 import numpy as np
 from src.utils import files_operations as fop
 from typing import Dict
 import nibabel as nib
-import config
+from configs import config
 
 
 def plot_and_save(data_dict, filepath):

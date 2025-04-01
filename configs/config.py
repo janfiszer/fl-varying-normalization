@@ -15,34 +15,28 @@ from configs.enums import *
 LOCAL = True
 NODE_FILENAME = "SERVERNODE.txt"
 
-# saving and logging
+# DEEP LEARNING PARAMETERS
+INPUT_MODALITIES = (ImageModality.T1, ImageModality.T1)
+LOSS_TYPE = LossFunctions.MSE_DSSIM
+BATCH_SIZE = 32
+IMAGE_SIZE = (240, 240)
+LEARNING_RATE = 0.001
+NUM_WORKERS = 8
+# saving and logging while training
 USE_WANDB = False
 BATCH_PRINT_FREQ = 10  # number of batch after each the training parameters (metrics, loss) is printed
 SAVING_FREQUENCY = 10  # how often (round-wise) the model is saved
 CLIENT_SAVING_FREQ = 10  # how often (round-wise) the model is saved for client
 
 # model parameters
-NORMALIZATION = NormalizationType.BN
+NORMALIZATION = LayerNormalizationType.BN
 N_GROUP_NORM = 32
 
-
-# client parameters
 METRICS = ["loss",  "mse", "relative_error", "ssim", "zoomed_ssim"]
 
-# METRICS = ["loss", "ssim", "pnsr", "mse", "masked_mse", "relative_error"]
-# METRICS = ["loss", "ssim", "masked_ssim", "pnsr", "mse", "masked_mse", "relative_error"]
-N_EPOCHS_CLIENT = 4
-
-TRANSLATION = (ImageModality.T1, ImageModality.T1)
-LOSS_TYPE = LossFunctions.MSE_DSSIM
-BATCH_SIZE = 32
-IMAGE_SIZE = (240, 240)
-LEARNING_RATE = 0.001
-NUM_WORKERS = 8
-
-
+# Federated learning
 # USED ONLY: when the server and clients are started separately
-# port address
+# port address, for communication
 PORT = "8084"
 # training parameters
 CLIENT_TYPE = ClientTypes.FED_BN
@@ -52,6 +46,10 @@ AGGREGATION_METHOD = AggregationMethods.FED_AVG
 N_ROUNDS = 32
 MIN_FIT_CLIENTS = MIN_AVAILABLE_CLIENTS = 4
 FRACTION_FIT = 1.0
+
+# Client site
+N_EPOCHS_CLIENT = 4
+
 
 # SPECIALIZED METHOD
 # FedOpt

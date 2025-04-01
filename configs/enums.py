@@ -29,7 +29,7 @@ class AggregationMethods(Enum):
     FED_TRIMMED = 10
 
 
-class NormalizationType(Enum):
+class LayerNormalizationType(Enum):
     BN = 1
     GN = 2
     NONE = 3
