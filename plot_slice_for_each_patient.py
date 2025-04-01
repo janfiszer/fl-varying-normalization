@@ -71,8 +71,8 @@ if __name__ == '__main__':
         output_dir = "C:\\Users\\JanFiszer\\data\\mri\\flair_volumes\\single_slice_vis"
         paths_from_local_dirs = {"t1": "*t1.nii.gz", "t2": "*t2.nii.gz", "flair": "*flair.nii.gz"}
     else:
-        data_dir = sys.argv[1]
-        output_dir = sys.argv[2]
-        paths_from_local_dirs = {"t1": "*t1.nii.gz", "t2": "*t2.nii.gz", "flair": "*flair.nii.gz"}
+        data_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/UCSF-PDGM-v3"
+        output_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/UCSF-PDGM-v3/single_slice_vis"
+        paths_from_local_dirs = {"t1": "*T1.nii.gz", "t2": "*T2.nii.gz", "flair": "*FLAIR.nii.gz"}
     # path_from_local_dir = {}
     plot_slice_for_patient(data_dir, output_dir, paths_from_local_dirs)
