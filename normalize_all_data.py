@@ -13,6 +13,7 @@ from intensity_normalization.normalize.nyul import NyulNormalize
 from intensity_normalization.normalize.whitestripe import WhiteStripeNormalize
 from intensity_normalization.normalize.kde import KDENormalize
 
+
 class Normalizer:
     def __init__(self, name, normalizing_function, requirements=None):
         self.name = name
@@ -34,28 +35,26 @@ def plot_histogram(image, title=""):
     plt.show()
 
 
-def normalize_fcm(t1_image, image_flair=None):
+def normalize_fcm(image_to_normalize, t1_image, modality):
     fcm_norm = FCMNormalize(tissue_type=TissueType.WM)
     _ = fcm_norm(t1_image)
 
-    if image_flair is None:
-        image_flair = t1_image
-    fcm_flair = fcm_norm(image_flair, modality=Modality.FLAIR)
+    fcm_flair = fcm_norm(image_to_normalize, modality=modality)
 
     return fcm_flair
 
 
-def normalize_nyul(flair_images, image_flair):
+def normalize_nyul(image_to_normalize, modality, flair_images):
     nyul_norm = NyulNormalize(output_min_value=0.0, output_max_value=1.0)
-    nyul_norm.fit(flair_images, modality=Modality.FLAIR)
-    nyul_flair = nyul_norm(image_flair, modality=Modality.FLAIR)
+    nyul_norm.fit(flair_images, modality=modality)
+    nyul_flair = nyul_norm(image_to_normalize, modality=modality)
 
     return nyul_flair
 
 
-def normalize_white_stripe(image_flair, norm_value=1.0):
+def normalize_white_stripe(image_to_normalize, modality, norm_value=1.0):
     whitestripe_norm = WhiteStripeNormalize(norm_value=norm_value)
-    white_stripe_flair = whitestripe_norm(image_flair, modality=Modality.FLAIR)
+    white_stripe_flair = whitestripe_norm(image_to_normalize, modality=modality)
 
     return white_stripe_flair
 
@@ -168,22 +167,26 @@ def normalize_all_from_dir(data_dir, output_dir, path_from_local_dir: Dict, norm
                 # saving histogram and slice plot
                 if save_histogram_slice_plots:
                     image_path = os.path.join(modality_path, f"{str(normalizer)}_{patient_file_name}.png")
-                    plot_single_histogram_and_slice(normalized_volume, 110, volume > 0, image_path)
+                    plot_single_histogram_and_slice(normalized_volume,
+                                                    slice_index=110,
+                                                    brain_mask=volume > 1e-6,
+                                                    filename=image_path)
 
                 # saving the volume as a 3D numpy array
                 save_path = os.path.join(modality_path, f"{str(normalizer)}_{patient_file_name}")
                 np.save(save_path, normalized_volume)
 
 
-def main():
+def test_every_normalizer():
     data_dir = "C:\\Users\\JanFiszer\\data\\mri\\flair_volumes"
     subject_1 = "Brats18_TCIA13_654_1"
 
     # loading t1w and flair images from the same subject
-    image = nib.load(os.path.join(data_dir, subject_1,
+    image_t1 = nib.load(os.path.join(data_dir, subject_1,
                                   f"{subject_1}_t1.nii.gz")).get_fdata()  # assume skull-stripped otherwise load mask too
     image_flair = nib.load(os.path.join(data_dir, subject_1, f"{subject_1}_flair.nii.gz")).get_fdata()
 
+    modality = Modality.FLAIR
     # subject_2 = "Brats18_TCIA13_654_1"
 
     # loading t1w and flair images from the same subject
@@ -193,14 +196,14 @@ def main():
 
     flair_volume_paths = generate_scans_paths(os.path.join(data_dir), suffix="flair")
     flair_images = [nib.load(volume_path).get_fdata() for volume_path in flair_volume_paths]
-    brain_mask = image > 1e-6
+    brain_mask = image_t1 > 1e-6
 
     normalized_volumes = {"Not normalized": image_flair,
-                          # "FCM": normalize_fcm(image, image_flair),
-                          # "Nyul": normalize_nyul(flair_images, image_flair),
-                          "White Stripe (normalization scaler=0.2)": normalize_white_stripe(image_flair, norm_value=0.2),
-                          "White Stripe (normalization scaler=0.02)": normalize_white_stripe(image_flair, norm_value=0.02),
-                          "White Stripe (normalization scaler=0.05)": normalize_white_stripe(image_flair, norm_value=0.05)}
+                          "FCM": normalize_fcm(image_flair, image_t1, modality),
+                          "Nyul": normalize_nyul(image_flair, modality, flair_images),
+                          # "White Stripe (normalization scaler=0.2)": normalize_white_stripe(image_flair, norm_value=0.2),
+                          # "White Stripe (normalization scaler=0.02)": normalize_white_stripe(image_flair, norm_value=0.02),
+                          "White Stripe (normalization scaler=0.05)": normalize_white_stripe(image_flair, modality, norm_value=0.05)}
 
     plot_histograms_one_slice(normalized_volumes, slice_index=110, brain_mask=brain_mask)
 
@@ -216,12 +219,13 @@ def main():
 
 
 if __name__ == '__main__':
-    paths_from_local_dirs = {"t1": "*t1.nii.gz", "t2": "*t2.nii.gz", "flair": "*flair.nii.gz"}
-    normalizers = [Normalizer("WhiteStripe", normalize_white_stripe),
-                   Normalizer("NoNorm", lambda x: x)]
-
-    normalize_all_from_dir("C:\\Users\\JanFiszer\\data\\mri\\flair_volumes",
-                           "C:\\Users\\JanFiszer\\data\\mri\\normalized",
-                           paths_from_local_dirs,
-                           normalizers)
+    test_every_normalizer()
+    # paths_from_local_dirs = {"t1": "*t1.nii.gz", "t2": "*t2.nii.gz", "flair": "*flair.nii.gz"}
+    # normalizers = [Normalizer("WhiteStripe", normalize_white_stripe),
+    #                Normalizer("NoNorm", lambda x: x)]
+    #
+    # normalize_all_from_dir("C:\\Users\\JanFiszer\\data\\mri\\flair_volumes",
+    #                        "C:\\Users\\JanFiszer\\data\\mri\\normalized",
+    #                        paths_from_local_dirs,
+    #                        normalizers)
 
