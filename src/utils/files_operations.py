@@ -307,7 +307,7 @@ def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, sh
     local_dirs_string = '\n'.join([loc_dir for loc_dir in local_dirs])
     modalities_counts = {modality: len(filepaths) for modality, filepaths in modalities_filepaths.items()}
 
-    print(f"For the provided parameters, found {modalities_counts} by reading from files:\n"
+    print(f"For the provided parameters, found {modalities_counts} by reading from files (with limit of {n_patients} patients):\n"
           f"{local_dirs_string}")
 
     return modalities_filepaths
