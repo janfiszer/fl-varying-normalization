@@ -15,8 +15,6 @@ from intensity_normalization.normalize.fcm import FCMNormalize
 from intensity_normalization.normalize.nyul import NyulNormalize
 from intensity_normalization.normalize.whitestripe import WhiteStripeNormalize
 from intensity_normalization.normalize.zscore import ZScoreNormalize
-from intensity_normalization.normalize.ravel import RavelNormalize
-from intensity_normalization.normalize.kde import KDENormalize
 
 
 class NoNormalization:
@@ -192,7 +190,7 @@ def normalize_all_from_dir(data_dir: str,
                            path_from_local_dir: Dict,
                            normalizers: List[Normalizer],
                            save_histogram_slice_plots=True):
-    modalities_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True)
+    modalities_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True, n_patients=12)
 
     # splitting the datasets into n subsets (n number of normalizers)
     n_normalization = len(normalizers)
