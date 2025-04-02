@@ -202,10 +202,11 @@ def normalize_all_from_dir(data_dir: str,
     # for each modality:
     # load the data and normalize the data with the given normalizer
     # store it in a new directory
-    for modality, filepaths in modalities_filepaths.items():
-        # modality_path = os.path.join(output_dir, modality)
-        # fop.try_create_dir(modality_path)
-        for normalizer, indices_range in normalizers_with_indices_ranges.items():
+
+    for normalizer, indices_range in normalizers_with_indices_ranges.items():
+        normalizer_path = os.path.join(output_dir, str(normalizer))
+        fop.try_create_dir(normalizer_path)
+        for modality, filepaths in modalities_filepaths.items():
             dedicated_filepaths = filepaths[indices_range[0]: indices_range[1]]
             raw_volumes = []
 
@@ -232,7 +233,7 @@ def normalize_all_from_dir(data_dir: str,
                                                     filename=image_path)
 
                 # saving the volume as a 3D numpy array
-                patient_new_path = os.path.join(output_dir, patient_file_name)
+                patient_new_path = os.path.join(normalizer_path, patient_file_name)
                 fop.try_create_dir(patient_new_path)
                 save_path = os.path.join(patient_new_path, f"{str(normalizer)}_{modality}.npy")
                 np.save(save_path, normalized_volume)
