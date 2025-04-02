@@ -290,14 +290,12 @@ def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, sh
             break
         # just for one dataset purposes
         # inside_dir = local_dirs[i].split('_')[0]
-        any_modality_missing = False
 
         for modality, filepath_from_data_dir in filepaths_from_data_dir.items():
             alike_path = os.path.join(data_dir, local_dir, filepath_from_data_dir)
             retrieved_filepaths = sorted(glob(alike_path))
 
             if len(retrieved_filepaths) == 0:  # if not any found the directory is skipped
-                # any_modality_missing = True
                 break
             elif len(retrieved_filepaths) > 1:
                 raise ValueError("More than one file with the provided regex: ", alike_path)
