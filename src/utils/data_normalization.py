@@ -66,13 +66,13 @@ class Normalizer:
 
     def __call__(self, image,
                  modality: str,
-                 before_each_func_args: Dict = None
+                 *args
                  ):
 
         kwargs = {"modality": modality}
         # so far skipping FCM and no playing with each iteration adaptation
         if self.name == "whitestripe":
-            self.fcm_each_normalization(*before_each_func_args)
+            self.fcm_each_normalization(*args)
 
         return self.normalizer(image, **kwargs)
 
@@ -165,6 +165,8 @@ def plot_single_histogram_and_slice(volume, slice_index, brain_mask, title, file
     plt.tight_layout()
     plt.savefig(filename)
 
+    plt.close()
+
 
 def plot_histograms_one_slice(volumes, slice_index, brain_mask):
     """
@@ -217,24 +219,21 @@ def normalize_all_from_dir(data_dir: str,
     if save_histogram_slice_plots:
         histogram_slice_plot_dir = os.path.join(output_dir, "slices_and_histograms")
         fop.try_create_dir(histogram_slice_plot_dir)
+
     # for each modality:
     # load the data and normalize the data with the given normalizer
     # store it in a new directory
     # loading t1 images if the normalizing method is WhiteStripe
-
     for normalizer, indices_range in normalizers_with_indices_ranges.items():
         normalizer_path = os.path.join(output_dir, str(normalizer))
         fop.try_create_dir(normalizer_path)
 
-        args = []
-
         if normalizer.name == "whitestripe":
+            # loading all the
             raw_t1_volumes = []
             for volume_path_index in range(indices_range[0], indices_range[1]):
                 volume = nib.load(modalities_filepaths['t1'][volume_path_index]).get_fdata()
                 raw_t1_volumes.append(volume)
-
-            args.append(raw_t1_volumes)
 
         for modality, filepaths in modalities_filepaths.items():
             # dedicated_filepaths = filepaths[indices_range[0]: indices_range[1]]
@@ -249,8 +248,17 @@ def normalize_all_from_dir(data_dir: str,
             normalizer.setup([np.array(raw_volumes)])
 
             for i, volume in enumerate(raw_volumes):
-                normalized_volume = normalizer(volume, Modality.from_string(modality), *args)
+                # list of arguments that function is using before normalization of each volume
+                each_normalization_args = []
 
+                # depedning on the type of normalization different arguments used, so far only `WhiteStripe`
+                if normalizer.name == "whitestripe":
+                    each_normalization_args.append(raw_t1_volumes[i])
+
+                # actual normalization
+                normalized_volume = normalizer(volume, Modality.from_string(modality), *each_normalization_args)
+
+                # extracting the name of the patient (directory the .nii.gz file is in)
                 patient_file_name = filepaths[indices_range[0]+i].split(os.path.sep)[-2]
 
                 # saving histogram and slice plot
