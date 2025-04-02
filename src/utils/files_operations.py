@@ -420,6 +420,10 @@ def get_brains_slices_info(dir_name):
 #     return train_patients_slices, test_patients_slices, validation_patients_slices
 
 
+def get_youngest_dir(filepath):
+    patient_file_name = filepath.split(os.path.sep)[-2]
+
+
 def test_mask_in(img_name, img_dir, breakpoint=10, failed_dir="failed"):
     img = np.load(os.path.join(img_dir, img_name))
 
