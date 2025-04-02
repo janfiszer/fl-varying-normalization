@@ -208,13 +208,19 @@ def normalize_all_from_dir(data_dir: str,
                            output_dir: str,
                            path_from_local_dir: Dict,
                            normalizers: List[Normalizer],
+                           mask_file: str = None,
                            save_histogram_slice_plots=True):
+    logging.log(logging.INFO, "Process of normalization and division af the dataset: STARTING...\n\n")
+
     modalities_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True, n_patients=12)
 
     # splitting the datasets into n subsets (n number of normalizers)
     n_normalization = len(normalizers)
     subset_size = len(list(modalities_filepaths.values())[0]) // n_normalization
     normalizers_with_indices_ranges = {normalizer: (i*subset_size, (i+1)*subset_size) for i, normalizer in enumerate(normalizers)}
+
+    logging.log(logging.INFO, f"{n_normalization} normalizers were provided, each of them will have a subset "
+                              f"of {subset_size} patients and will be in aproriate directories in {output_dir}.\n")
 
     if save_histogram_slice_plots:
         histogram_slice_plot_dir = os.path.join(output_dir, "slices_and_histograms")
@@ -225,6 +231,7 @@ def normalize_all_from_dir(data_dir: str,
     # store it in a new directory
     # loading t1 images if the normalizing method is WhiteStripe
     for normalizer, indices_range in normalizers_with_indices_ranges.items():
+        logging.log(logging.INFO, f"Current normalizer: {normalizer}\nProcessing...")
         normalizer_path = os.path.join(output_dir, str(normalizer))
         fop.try_create_dir(normalizer_path)
 
@@ -248,18 +255,21 @@ def normalize_all_from_dir(data_dir: str,
             normalizer.setup([np.array(raw_volumes)])
 
             for i, volume in enumerate(raw_volumes):
-                # list of arguments that function is using before normalization of each volume
-                each_normalization_args = []
+                # in case we have loaded the mask the normalization is not needed, so skip
+                if modality != mask_file:
+                    # list of arguments that function is using before normalization of each volume
+                    each_normalization_args = []
 
-                # depedning on the type of normalization different arguments used, so far only `WhiteStripe`
-                if normalizer.name == "whitestripe":
-                    each_normalization_args.append(raw_t1_volumes[i])
+                    # depending on the type of normalization different arguments used, so far only `WhiteStripe`
+                    if normalizer.name == "whitestripe":
+                        each_normalization_args.append(raw_t1_volumes[i])
 
-                # actual normalization
-                normalized_volume = normalizer(volume, Modality.from_string(modality), *each_normalization_args)
+                    # actual normalization
+                    normalized_volume = normalizer(volume, Modality.from_string(modality), *each_normalization_args)
 
                 # extracting the name of the patient (directory the .nii.gz file is in)
-                patient_file_name = filepaths[indices_range[0]+i].split(os.path.sep)[-2]
+                current_filepath = filepaths[indices_range[0]+i]
+                patient_file_name = current_filepath.split(os.path.sep)[-2]
 
                 # saving histogram and slice plot
                 if save_histogram_slice_plots:
@@ -274,7 +284,11 @@ def normalize_all_from_dir(data_dir: str,
                 patient_new_path = os.path.join(normalizer_path, patient_file_name)
                 fop.try_create_dir(patient_new_path)
                 save_path = os.path.join(patient_new_path, f"{modality}.npy")
+                logging.log(logging.INFO, f"Volume from file '{current_filepath}' normalized by '{normalizer} normalizer' "
+                                          f"and saved to '{save_path}'.")
                 np.save(save_path, normalized_volume)
+
+    logging.log(logging.INFO, "Process of normalization and division af the dataset: ENDED")
 
 
 def test_every_normalizer():

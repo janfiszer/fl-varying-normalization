@@ -153,9 +153,9 @@ class TransformNIIDataToNumpySlices:
         # print("Creating validation set...")
         # self.create_set(t1_val_paths, t2_val_paths, t1_val_dir, t2_val_dir)
 
-        print(f"\nSUCCESS\nCreated train and test directories in {self.target_root_dir} "
-              f"from {n_train_samples} train, {n_val_samples} validation and {n_samples - n_train_samples - n_val_samples} "
-              f"test 3D MRI images")
+        logging.log(logging.INFO, f"\nSUCCESS\nCreated train and test directories in {self.target_root_dir} "
+                                  f"from {n_train_samples} train, {n_val_samples} validation and {n_samples - n_train_samples - n_val_samples} "
+                                  f"test 3D MRI images")
 
     def create_set(self, t1_paths, t2_paths, flair_paths, set_type_name):
         flair = len(flair_paths) > 0
@@ -307,8 +307,9 @@ def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, sh
     local_dirs_string = '\n'.join([loc_dir for loc_dir in local_dirs])
     modalities_counts = {modality: len(filepaths) for modality, filepaths in modalities_filepaths.items()}
 
-    print(f"For the provided parameters, found {modalities_counts} by reading from files (with limit of {n_patients} patients):\n"
-          f"{local_dirs_string}")
+    logging.log(logging.INFO,
+                f"For the provided parameters, found {modalities_counts} by reading from files (with limit of {n_patients} patients):\n"
+                f"{local_dirs_string}\n\n")
 
     return modalities_filepaths
 
