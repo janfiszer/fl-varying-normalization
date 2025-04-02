@@ -71,7 +71,7 @@ class Normalizer:
 
         kwargs = {"modality": modality}
         # so far skipping FCM and no playing with each iteration adaptation
-        if self.name == "whitestripe":
+        if self.name == "fcm":
             self.fcm_each_normalization(*args)
 
         return self.normalizer(image, **kwargs)
@@ -133,7 +133,8 @@ def normalize_zscore(image_to_normalize, modality):
 
 def generate_scans_paths(data_dir, suffix="flair"):
     # returns the relative path from the data_dir
-    volumes_path = [os.path.join(data_dir, subject_dir, f"{subject_dir}_{suffix}.nii.gz") for subject_dir in os.listdir(data_dir)]
+    volumes_path = [os.path.join(data_dir, subject_dir, f"{subject_dir}_{suffix}.nii.gz") for subject_dir in
+                    os.listdir(data_dir)]
 
     return volumes_path
 
@@ -168,7 +169,7 @@ def plot_single_histogram_and_slice(volume, slice_index, brain_mask, title, file
     plt.close()
 
 
-def plot_histograms_one_slice(volumes, slice_index, brain_mask):
+def plot_histograms_one_slice(volumes, slice_index, brain_mask, filename=None):
     """
     Takes a dict of 3D volumes s and plots:
     - Histogram of positive values
@@ -176,12 +177,13 @@ def plot_histograms_one_slice(volumes, slice_index, brain_mask):
     All on a single subplot.
     """
     num_volumes = len(volumes)
-    fig, axes = plt.subplots(num_volumes, 2, figsize=(10, 5 * num_volumes))
+    fig, axes = plt.subplots(num_volumes, 3, figsize=(10, 3 * num_volumes))
 
     for i, (normalization_name, volume) in enumerate(volumes.items()):
         # Ensure the axes indexing works for multiple or single arrays
         ax_hist = axes[i, 0]
-        ax_image = axes[i, 1]
+        ax_image1 = axes[i, 1]
+        ax_image2 = axes[i, 2]
 
         # Filter out the background
         positive_values = volume[brain_mask]
@@ -193,15 +195,26 @@ def plot_histograms_one_slice(volumes, slice_index, brain_mask):
         ax_hist.set_ylabel('Frequency')
 
         # Extract a 2D slice (middle slice along the first axis)
-        middle_slice = volume[:, :, slice_index]
+        middle_slice1 = volume[:, :, slice_index[0]]
+        middle_slice2 = volume[:, :, slice_index[1]]
 
         # Plot 2D slice as an image
-        im = ax_image.imshow(middle_slice, cmap='grey')
-        ax_image.set_title(f'Slice {slice_index}')
-        plt.colorbar(im, ax=ax_image)
+        im = ax_image1.imshow(middle_slice1, cmap='grey')
+        ax_image1.set_title(f'Slice {slice_index[0]}')
+        plt.colorbar(im, ax=ax_image1)
+
+        # Plot 2D slice as an image
+        im = ax_image2.imshow(middle_slice2, cmap='grey')
+        ax_image2.set_title(f'Slice {slice_index[1]}')
+        plt.colorbar(im, ax=ax_image2)
 
     plt.tight_layout()
-    plt.show()
+    if filename:
+        plt.savefig(filename)
+    else:
+        plt.show()
+
+    plt.close()
 
 
 def normalize_all_from_dir(data_dir: str,
@@ -217,7 +230,8 @@ def normalize_all_from_dir(data_dir: str,
     # splitting the datasets into n subsets (n number of normalizers)
     n_normalization = len(normalizers)
     subset_size = len(list(modalities_filepaths.values())[0]) // n_normalization
-    normalizers_with_indices_ranges = {normalizer: (i*subset_size, (i+1)*subset_size) for i, normalizer in enumerate(normalizers)}
+    normalizers_with_indices_ranges = {normalizer: (i * subset_size, (i + 1) * subset_size) for i, normalizer in
+                                       enumerate(normalizers)}
 
     logging.log(logging.INFO, f"{n_normalization} normalizers were provided, each of them will have a subset "
                               f"of {subset_size} patients and will be in aproriate directories in {output_dir}.\n")
@@ -235,7 +249,7 @@ def normalize_all_from_dir(data_dir: str,
         normalizer_path = os.path.join(output_dir, str(normalizer))
         fop.try_create_dir(normalizer_path)
 
-        if normalizer.name == "whitestripe":
+        if normalizer.name == "fcm":
             # loading all the
             raw_t1_volumes = []
             for volume_path_index in range(indices_range[0], indices_range[1]):
@@ -247,8 +261,8 @@ def normalize_all_from_dir(data_dir: str,
             raw_volumes = []
 
             for volume_path_index in range(indices_range[0], indices_range[1]):
-               volume = nib.load(filepaths[volume_path_index]).get_fdata()
-               raw_volumes.append(volume)
+                volume = nib.load(filepaths[volume_path_index]).get_fdata()
+                raw_volumes.append(volume)
 
             # so far I give as the argument of the function all the raw volumes always, because only one setup exists
             # TODO: make it more adaptive
@@ -260,20 +274,21 @@ def normalize_all_from_dir(data_dir: str,
                     # list of arguments that function is using before normalization of each volume
                     each_normalization_args = []
 
-                    # depending on the type of normalization different arguments used, so far only `WhiteStripe`
-                    if normalizer.name == "whitestripe":
+                    # depending on the type of normalization different arguments used, so far only `FCM (Fuzzy c-means)`
+                    if normalizer.name == "fcm":
                         each_normalization_args.append(raw_t1_volumes[i])
 
                     # actual normalization
                     normalized_volume = normalizer(volume, Modality.from_string(modality), *each_normalization_args)
 
                 # extracting the name of the patient (directory the .nii.gz file is in)
-                current_filepath = filepaths[indices_range[0]+i]
-                patient_file_name = current_filepath.split(os.path.sep)[-2]
+                current_filepath = filepaths[indices_range[0] + i]
+                patient_file_name = fop.get_youngest_dir(current_filepath)
 
                 # saving histogram and slice plot
                 if save_histogram_slice_plots:
-                    image_path = os.path.join(histogram_slice_plot_dir, f"{str(normalizer)}_{patient_file_name}_{modality}.png")
+                    image_path = os.path.join(histogram_slice_plot_dir,
+                                              f"{str(normalizer)}_{patient_file_name}_{modality}.png")
                     plot_single_histogram_and_slice(normalized_volume,
                                                     slice_index=110,
                                                     brain_mask=volume > 1e-6,
@@ -284,8 +299,9 @@ def normalize_all_from_dir(data_dir: str,
                 patient_new_path = os.path.join(normalizer_path, patient_file_name)
                 fop.try_create_dir(patient_new_path)
                 save_path = os.path.join(patient_new_path, f"{modality}.npy")
-                logging.log(logging.INFO, f"Volume from file '{current_filepath}' normalized by '{normalizer} normalizer' "
-                                          f"and saved to '{save_path}'.")
+                logging.log(logging.INFO,
+                            f"Volume from file '{current_filepath}' normalized by '{normalizer} normalizer' "
+                            f"and saved to '{save_path}'.")
                 np.save(save_path, normalized_volume)
 
     logging.log(logging.INFO, "Process of normalization and division af the dataset: ENDED")
@@ -297,7 +313,7 @@ def test_every_normalizer():
 
     # loading t1w and flair images from the same subject
     image_t1 = nib.load(os.path.join(data_dir, subject_1,
-                                  f"{subject_1}_t1.nii.gz")).get_fdata()  # assume skull-stripped otherwise load mask too
+                                     f"{subject_1}_t1.nii.gz")).get_fdata()  # assume skull-stripped otherwise load mask too
     image_flair = nib.load(os.path.join(data_dir, subject_1, f"{subject_1}_flair.nii.gz")).get_fdata()
 
     modality = Modality.FLAIR
@@ -317,11 +333,12 @@ def test_every_normalizer():
                           "Nyul": normalize_nyul(image_flair, modality, flair_images),
                           # "White Stripe (normalization scaler=0.2)": normalize_white_stripe(image_flair, norm_value=0.2),
                           # "White Stripe (normalization scaler=0.02)": normalize_white_stripe(image_flair, norm_value=0.02),
-                          "White Stripe (normalization scaler=0.05)": normalize_white_stripe(image_flair, modality, norm_value=0.05),
+                          "White Stripe (normalization scaler=0.05)": normalize_white_stripe(image_flair, modality,
+                                                                                             norm_value=0.05),
                           "z-score": normalize_zscore(image_flair, modality=modality)
                           }
 
-    plot_histograms_one_slice(normalized_volumes, slice_index=110, brain_mask=brain_mask)
+    plot_histograms_one_slice(normalized_volumes, slice_index=[110, 125], brain_mask=brain_mask)
 
     # plot histograms and example slice
     # plot_histogram(image_flair, title="Not normalized")
@@ -334,9 +351,52 @@ def test_every_normalizer():
     # plt.show()
 
 
+def demonstrate_normalization(data_dir: str,
+                              output_dir: str,
+                              path_from_local_dir: Dict,
+                              normalizers: List[Normalizer],
+                              n_volumes: int):
+    modalities_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, n_patients=n_volumes)
+
+    fop.try_create_dir(output_dir)
+    # loading t1 first since
+    raw_t1_volumes = []
+    for volume_path_index in modalities_filepaths['t1']:
+        volume = nib.load(volume_path_index).get_fdata()
+        raw_t1_volumes.append(volume)
+
+    for modality, filepaths in modalities_filepaths.items():
+        modality_dir = os.path.join(output_dir, modality)
+        fop.try_create_dir(modality_dir)
+
+        raw_volumes = []
+        for volume_filepath in filepaths:
+            volume = nib.load(volume_filepath).get_fdata()
+            raw_volumes.append(volume)
+
+        normalizer_and_volumes = {}
+
+        for i, volume in enumerate(raw_volumes):
+            for normalizer in normalizers:
+                normalizer.setup([np.array(raw_volumes)])
+                if normalizer.name == "fcm":
+                    normalized_volume = normalizer(volume, Modality.from_string(modality), raw_t1_volumes[i])
+                else:
+                    normalized_volume = normalizer(volume, Modality.from_string(modality))
+
+                normalizer_and_volumes[str(normalizer)] = normalized_volume
+
+            patient_file_name = fop.get_youngest_dir(volume_filepath)
+
+            plot_path = os.path.join(modality_dir, f"normalization_effect{patient_file_name}.png")
+            logging.log(logging.INFO, f"Demo of normalization will be save to {plot_path}")
+            plot_histograms_one_slice(normalizer_and_volumes, slice_index=[110, 125], brain_mask=volume > 0, filename=plot_path)
+
+
 def define_normalizers_and_more():
     normalizers = [Normalizer("nonorm", NoNormalization),
-                   Normalizer("nyul", NyulNormalize, normalizer_kwargs={"output_min_value": -1.0, "output_max_value": 1.0}),
+                   Normalizer("nyul", NyulNormalize,
+                              normalizer_kwargs={"output_min_value": -1.0, "output_max_value": 1.0}),
                    Normalizer("whitestripe", WhiteStripeNormalize, normalizer_kwargs={"norm_value": 0.05}),
                    Normalizer("zscore", ZScoreNormalize),
                    Normalizer("fcm", FCMNormalize),
