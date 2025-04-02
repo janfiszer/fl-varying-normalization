@@ -421,7 +421,7 @@ def get_brains_slices_info(dir_name):
 
 
 def get_youngest_dir(filepath):
-    patient_file_name = filepath.split(os.path.sep)[-2]
+    return filepath.split(os.path.sep)[-2]
 
 
 def test_mask_in(img_name, img_dir, breakpoint=10, failed_dir="failed"):
