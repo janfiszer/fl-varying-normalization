@@ -235,7 +235,7 @@ def normalize_all_from_dir(data_dir: str,
                 # saving the volume as a 3D numpy array
                 patient_new_path = os.path.join(normalizer_path, patient_file_name)
                 fop.try_create_dir(patient_new_path)
-                save_path = os.path.join(patient_new_path, f"{str(normalizer)}_{modality}.npy")
+                save_path = os.path.join(patient_new_path, f"{modality}.npy")
                 np.save(save_path, normalized_volume)
 
 
