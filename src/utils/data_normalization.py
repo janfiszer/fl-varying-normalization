@@ -269,6 +269,12 @@ def normalize_all_from_dir(data_dir: str,
             normalizer.setup([np.array(raw_volumes)])
 
             for i, volume in enumerate(raw_volumes):
+                # extracting the name of the patient (directory the .nii.gz file is in)
+                current_filepath = filepaths[indices_range[0] + i]
+                patient_file_name = fop.get_youngest_dir(current_filepath)
+                # creating the filepath where the processed volume will be saved
+                save_path = os.path.join(patient_new_path, f"{modality}.npy")
+
                 # in case we have loaded the mask the normalization is not needed, so skip
                 if modality != mask_file:
                     # list of arguments that function is using before normalization of each volume
@@ -281,27 +287,25 @@ def normalize_all_from_dir(data_dir: str,
                     # actual normalization
                     normalized_volume = normalizer(volume, Modality.from_string(modality), *each_normalization_args)
 
-                # extracting the name of the patient (directory the .nii.gz file is in)
-                current_filepath = filepaths[indices_range[0] + i]
-                patient_file_name = fop.get_youngest_dir(current_filepath)
+                    logging_message = f"Volume from file '{current_filepath}' normalized by '{normalizer} normalizer' and saved to '{save_path}'."
 
-                # saving histogram and slice plot
-                if save_histogram_slice_plots:
-                    image_path = os.path.join(histogram_slice_plot_dir,
-                                              f"{str(normalizer)}_{patient_file_name}_{modality}.png")
-                    plot_single_histogram_and_slice(normalized_volume,
-                                                    slice_index=110,
-                                                    brain_mask=volume > 1e-6,
-                                                    title=str(normalizer),
-                                                    filename=image_path)
+                    # saving histogram and slice plot
+                    if save_histogram_slice_plots:
+                        image_path = os.path.join(histogram_slice_plot_dir,
+                                                  f"{str(normalizer)}_{patient_file_name}_{modality}.png")
+                        plot_single_histogram_and_slice(normalized_volume,
+                                                        slice_index=110,
+                                                        brain_mask=volume > 1e-6,
+                                                        title=str(normalizer),
+                                                        filename=image_path)
+
+                else:
+                    logging_message = f"Mask volume from file '{current_filepath}' saved to '{save_path}'."
 
                 # saving the volume as a 3D numpy array
                 patient_new_path = os.path.join(normalizer_path, patient_file_name)
                 fop.try_create_dir(patient_new_path)
-                save_path = os.path.join(patient_new_path, f"{modality}.npy")
-                logging.log(logging.INFO,
-                            f"Volume from file '{current_filepath}' normalized by '{normalizer} normalizer' "
-                            f"and saved to '{save_path}'.")
+                logging.log(logging.INFO, logging_message)
                 np.save(save_path, normalized_volume)
 
     logging.log(logging.INFO, "Process of normalization and division af the dataset: ENDED")
