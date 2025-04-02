@@ -24,7 +24,22 @@ class NoNormalization:
         return image
 
 
+class MinMaxNormalization:
+    def __init__(self, min_value=-1, max_value=1):
+        self.min_value = min_value
+        self.max_value = max_value
+
+        return
+
+    def __call__(self, image, *args, **kwargs):
+        values_range = self.max_value - self.min_value
+
+        return (image - np.min(image)) / np.max(image) * values_range + self.min_value
+
+
 class Normalizer:
+    AVAILABLE_NORMALIZATION = ["nonorm", "nyul", "whitestripe", "fcm", "zscore", "minmax"]
+
     def __init__(self,
                  name: str,
                  normalizer,
@@ -34,6 +49,9 @@ class Normalizer:
 
         if normalizer_kwargs is None:
             normalizer_kwargs = {}
+
+        if name not in self.AVAILABLE_NORMALIZATION:
+            raise ValueError("Wrong `name` provided the only possible names are: ", *self.AVAILABLE_NORMALIZATION)
 
         self.name = name
         self.normalizer = normalizer(**normalizer_kwargs)
@@ -48,13 +66,13 @@ class Normalizer:
 
     def __call__(self, image,
                  modality: str,
-                 # before_each_func_kwargs: Dict
+                 before_each_func_args: Dict = None
                  ):
 
         kwargs = {"modality": modality}
         # so far skipping FCM and no playing with each iteration adaptation
-        # for parameter, value in self.before_each_normalization_func(**before_each_func_kwargs):
-        #     kwargs[parameter] = value
+        if self.name == "whitestripe":
+            self.fcm_each_normalization(*before_each_func_args)
 
         return self.normalizer(image, **kwargs)
 
@@ -202,16 +220,28 @@ def normalize_all_from_dir(data_dir: str,
     # for each modality:
     # load the data and normalize the data with the given normalizer
     # store it in a new directory
+    # loading t1 images if the normalizing method is WhiteStripe
 
     for normalizer, indices_range in normalizers_with_indices_ranges.items():
         normalizer_path = os.path.join(output_dir, str(normalizer))
         fop.try_create_dir(normalizer_path)
+
+        args = []
+
+        if normalizer.name == "whitestripe":
+            raw_t1_volumes = []
+            for volume_path_index in range(indices_range[0], indices_range[1]):
+                volume = nib.load(modalities_filepaths['t1'][volume_path_index]).get_fdata()
+                raw_t1_volumes.append(volume)
+
+            args.append(raw_t1_volumes)
+
         for modality, filepaths in modalities_filepaths.items():
-            dedicated_filepaths = filepaths[indices_range[0]: indices_range[1]]
+            # dedicated_filepaths = filepaths[indices_range[0]: indices_range[1]]
             raw_volumes = []
 
-            for volume_path in dedicated_filepaths:
-               volume = nib.load(volume_path).get_fdata()
+            for volume_path_index in range(indices_range[0], indices_range[1]):
+               volume = nib.load(filepaths[volume_path_index]).get_fdata()
                raw_volumes.append(volume)
 
             # so far I give as the argument of the function all the raw volumes always, because only one setup exists
@@ -219,9 +249,9 @@ def normalize_all_from_dir(data_dir: str,
             normalizer.setup([np.array(raw_volumes)])
 
             for i, volume in enumerate(raw_volumes):
-                normalized_volume = normalizer(volume, Modality.from_string(modality))
+                normalized_volume = normalizer(volume, Modality.from_string(modality), *args)
 
-                patient_file_name = dedicated_filepaths[i].split(os.path.sep)[-2]
+                patient_file_name = filepaths[indices_range[0]+i].split(os.path.sep)[-2]
 
                 # saving histogram and slice plot
                 if save_histogram_slice_plots:
@@ -286,7 +316,9 @@ def define_normalizers_and_more():
     normalizers = [Normalizer("nonorm", NoNormalization),
                    Normalizer("nyul", NyulNormalize, normalizer_kwargs={"output_min_value": -1.0, "output_max_value": 1.0}),
                    Normalizer("whitestripe", WhiteStripeNormalize, normalizer_kwargs={"norm_value": 0.05}),
-                   Normalizer("ZScore", ZScoreNormalize)
+                   Normalizer("zscore", ZScoreNormalize),
+                   Normalizer("fcm", FCMNormalize),
+                   Normalizer("minmax", MinMaxNormalization)
                    ]
 
     return normalizers
