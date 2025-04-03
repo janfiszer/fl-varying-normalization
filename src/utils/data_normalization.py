@@ -243,7 +243,7 @@ def normalize_all_from_dir(data_dir: str,
 
     if save_histogram_slice_plots:
         histogram_slice_plot_dir = os.path.join(output_dir, "slices_and_histograms")
-        Path(histogram_slice_plot_dir).mkdir(exist_ok=True)
+        Path(histogram_slice_plot_dir).mkdir(exist_ok=True, parents=True)
 
     # for each modality:
     # load the data and normalize the data with the given normalizer
