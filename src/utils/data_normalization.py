@@ -221,9 +221,12 @@ def normalize_all_from_dir(data_dir: str,
                            output_dir: str,
                            path_from_local_dir: Dict,
                            normalizers: List[Normalizer],
-                           mask_file: str = None,
+                           not_normalize: List = None,
                            save_histogram_slice_plots=True):
     logging.log(logging.INFO, "Process of normalization and division af the dataset: STARTING...\n\n")
+
+    if not_normalize is None:
+        logging.log(logging.WARNING, "All the slices will be normalized. If for example there is a mask provide `not_normalize` to exclude it.\n")
 
     modalities_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True, n_patients=12)
 
@@ -272,11 +275,16 @@ def normalize_all_from_dir(data_dir: str,
                 # extracting the name of the patient (directory the .nii.gz file is in)
                 current_filepath = filepaths[indices_range[0] + i]
                 patient_file_name = fop.get_youngest_dir(current_filepath)
-                # creating the filepath where the processed volume will be saved
+
+                # creating a new diretory where all the images of the given patient will be saved
+                patient_new_path = os.path.join(normalizer_path, patient_file_name)
+                fop.try_create_dir(patient_new_path)
+
+                # creating the filepath where the currently processed volume will be saved
                 save_path = os.path.join(patient_new_path, f"{modality}.npy")
 
                 # in case we have loaded the mask the normalization is not needed, so skip
-                if modality != mask_file:
+                if modality not in not_normalize:
                     # list of arguments that function is using before normalization of each volume
                     each_normalization_args = []
 
@@ -303,8 +311,6 @@ def normalize_all_from_dir(data_dir: str,
                     logging_message = f"Mask volume from file '{current_filepath}' saved to '{save_path}'."
 
                 # saving the volume as a 3D numpy array
-                patient_new_path = os.path.join(normalizer_path, patient_file_name)
-                fop.try_create_dir(patient_new_path)
                 logging.log(logging.INFO, logging_message)
                 np.save(save_path, normalized_volume)
 
