@@ -1,8 +1,10 @@
 import logging
+import sys
 import configs.config
 from src.utils import data_normalization
 
 if __name__ == '__main__':
+    n_patients = int(sys.argv[1])
     logging.getLogger().setLevel(logging.INFO)
     # test_every_normalizer()
     if configs.config.LOCAL:
@@ -29,5 +31,6 @@ if __name__ == '__main__':
                                               output_dir,
                                               paths_from_local_dirs,
                                               normalizers,
-                                              mask_file="mask",
+                                              not_normalize=["mask"],
+                                              n_patients=n_patients
                                               )
