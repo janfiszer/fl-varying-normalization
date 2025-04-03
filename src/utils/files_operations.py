@@ -20,77 +20,89 @@ class TransformNIIDataToNumpySlices:
     MAX_SLICE_INDEX = -1
     SLICES_FILE_FORMAT = ".npy"
     DIVISION_SETS = ["train", "test", "validation"]
+    """
+        Class that enables transform volumes into 2D slices set (train, test, split), 
+        which are having substantial part of the brain (`target_zero_ratio`). 
+        
+        From: 
+        `origin_data_dir`/
+        │── patient_name_slice/
+        │   ├── network input modalities e.g.
+        │   ├── t1
+        │   ├── t2
+        │   ├── flair
+        │   ├── `mask_dir`
+        
+        
+        To:
+        `target_root_dir`/
+        │── train/
+        │   ├── patient_name_slice e.g. UCSF_001_slice58
+        │   │   ├── network input modalities e.g.
+        │   │   ├── t1.npy
+        │   │   ├── t2.npy
+        │   │   ├── flair.npy
+        │   │   ├── `mask_dir`
+        │── test/
+        │   ├── patient_name_slice e.g. UCSF_002_slice58
+        │   │   ├── network input modalities e.g.
+        │   │   ├── t1.npy
+        │   │   ├── t2.npy
+        │   │   ├── flair.npy
+        │   │   ├── `mask_dir`
+        │── validation/
+        │   ├── patient_name_slice e.g. UCSF_003_slice58
+        │   │   ├── network input modalities e.g.
+        │   │   ├── t1.npy
+        │   │   ├── t2.npy
+        │   │   ├── flair.npy
+        │   │   ├── `mask_dir`
+
+    """
 
     def __init__(self, target_root_dir: str,
                  origin_data_dir: str,
                  transpose_order: Tuple,
+                 leading_modality=None,
                  target_zero_ratio=0.9,
                  image_size=None,
                  leave_patient_name=True):
+
         self.target_root_dir = target_root_dir
         self.origin_data_dir = origin_data_dir
         self.transpose_order = transpose_order
-        self.target_zero_ratio = target_zero_ratio
+        self.leading_modality = leading_modality
+        self.target_zero_ratio = target_zero_ratio  # TODO: mask included
         self.image_size = image_size
         self.leave_patient_name = leave_patient_name
 
-    def create_empty_dirs(self, flair=False):
+    @staticmethod
+    def create_empty_dirs(parent_dir_path, dir_names):
         # creating utilized directories
-        images_types = ["t1", "t2"]
-
-        if flair:
-            images_types.append("flair")
-
-        for s in self.DIVISION_SETS:
-            set_dir = os.path.join(self.target_root_dir, s)
-            try_create_dir(set_dir)
-            for image_type in images_types:
-                full_dir_name = os.path.join(set_dir, image_type)
-                try_create_dir(full_dir_name, allow_overwrite=False)
-        # train_dir = os.path.join(self.target_root_dir, "train")
-        # test_dir = os.path.join(self.target_root_dir, "test")
-        # val_dir = os.path.join(self.target_root_dir, "validation")
-        #
-        # t1_train_dir = os.path.join(train_dir, "t1")
-        # t2_train_dir = os.path.join(train_dir, "t2")
-        # t1_test_dir = os.path.join(test_dir, "t1")
-        # t2_test_dir = os.path.join(test_dir, "t2")
-        # t1_val_dir = os.path.join(val_dir, "t1")
-        # t2_val_dir = os.path.join(val_dir, "t2")
-        #
-        # for directory in [train_dir, test_dir, val_dir,
-        #                   t1_train_dir, t2_train_dir, t1_test_dir, t2_test_dir, t1_val_dir, t2_val_dir]:
-        #     try_create_dir(directory)
-
-        # return [t1_train_dir, t2_train_dir], [t1_test_dir, t2_test_dir], [t1_val_dir, t2_val_dir]
+        for s in dir_names:
+            set_dir = os.path.join(parent_dir_path, s)
+            Path(set_dir).mkdir(exist_ok=True)
 
     def create_train_val_test_sets(self,
-                                   t1_filepath_from_data_dir,
-                                   t2_filepath_from_data_dir,
-                                   flair_filepath_from_data_dir=None,
+                                   paths_from_local_dirs,
                                    train_size=0.75,
                                    n_patients=-1,
                                    validation_size=0.1):
         # creating target directory if already exists.
-        try_create_dir(self.target_root_dir)
+        Path(self.target_root_dir).mkdir(exist_ok=False)
         # creating inner directories
         # in each of the returned lists (train, test, val)
         # the order goes as follows: t1, t2, flair
-        self.create_empty_dirs(flair=flair_filepath_from_data_dir is not None)
-        # train_dirs, test_dirs, val_dirs = self.create_empty_dirs(flair=flair_filepath_from_data_dir is not None)
-        # print("Created directories: ",
-        #       *train_dirs, *test_dirs, *val_dirs,
-        #       "\n", sep='\n')
+        patients_names = os.listdir(self.origin_data_dir)
+        self.create_empty_dirs(self.origin_data_dir, self.DIVISION_SETS)
 
         # loading the data
-        t1_filepaths, t2_filepaths, flair_filepaths = get_nii_filepaths(self.origin_data_dir,
-                                                                        t1_filepath_from_data_dir,
-                                                                        t2_filepath_from_data_dir,
-                                                                        flair_filepath_from_data_dir,
-                                                                        n_patients)
+        modalities_filepaths = get_nii_filepaths(self.origin_data_dir,
+                                                 paths_from_local_dirs,
+                                                 n_patients)
 
         # splitting filenames into train and test sets
-        n_samples = len(t1_filepaths)
+        n_samples = len(list(modalities_filepaths.values())[0])
         n_train_samples = int(train_size * n_samples)
         n_val_samples = int(validation_size * n_samples)
 
@@ -116,102 +128,94 @@ class TransformNIIDataToNumpySlices:
                 lower_bound = n_train_samples
                 upper_bound = n_val_samples + n_train_samples
 
-            current_set_filepaths_t1 = t1_filepaths[lower_bound:upper_bound]
-            current_set_filepaths_t2 = t2_filepaths[lower_bound:upper_bound]
-            current_set_filepaths_flair = flair_filepaths[lower_bound:upper_bound]
+            train_test_split_sets = {}
+            for modality, filepaths in modalities_filepaths.items():
+                # extracting current (train, test or val) set based on the range
+                current_set_filepaths = filepaths[lower_bound:upper_bound]
+                # assigning the set to the given modality
+                train_test_split_sets[modality] = current_set_filepaths
+                # FOR NOW parent=True as the solution TODO: reconsider
+                # creating directories for each patient
+                # self.create_empty_dirs(os.path.join(self.origin_data_dir, s),  get_youngest_dir(current_set_filepaths))
 
-            self.create_set(current_set_filepaths_t1, current_set_filepaths_t2, current_set_filepaths_flair, s)
-
-        # for filepath_index in len(t1_filepaths, t2_filepaths, flair_filepaths]:
-        #     train_paths = t1_filepaths[:n_train_samples]
-        #     val_paths = t1_filepaths[n_train_samples:n_val_samples + n_train_samples]
-        #     test_paths = t1_filepaths[n_val_samples + n_train_samples:]
-        #
-        #     print("Creating train set...")
-        #     self.create_set(t1_train_paths, t2_train_paths, t1_train_dir, t2_train_dir)
-        #
-        #     print("Creating test set...")
-        #     self.create_set(t1_test_paths, t2_test_paths, t1_test_dir, t2_test_dir)
-        #
-        #     print("Creating validation set...")
-        #     self.create_set(t1_val_paths, t2_val_paths, t1_val_dir, t2_val_dir)
-        #
-        # t1_train_paths = t1_filepaths[:n_train_samples]
-        # t1_val_paths = t1_filepaths[n_train_samples:n_val_samples + n_train_samples]
-        # t1_test_paths = t1_filepaths[n_val_samples + n_train_samples:]
-        #
-        # t2_train_paths = t2_filepaths[:n_train_samples]
-        # t2_val_paths = t2_filepaths[n_train_samples:n_val_samples + n_train_samples]
-        # t2_test_paths = t2_filepaths[n_val_samples + n_train_samples:]
-        #
-        # print("Creating train set...")
-        # self.create_set(t1_train_paths, t2_train_paths, t1_train_dir, t2_train_dir)
-        #
-        # print("Creating test set...")
-        # self.create_set(t1_test_paths, t2_test_paths, t1_test_dir, t2_test_dir)
-        #
-        # print("Creating validation set...")
-        # self.create_set(t1_val_paths, t2_val_paths, t1_val_dir, t2_val_dir)
+            self.create_set(train_test_split_sets, s)
 
         logging.log(logging.INFO, f"\nSUCCESS\nCreated train and test directories in {self.target_root_dir} "
                                   f"from {n_train_samples} train, {n_val_samples} validation and {n_samples - n_train_samples - n_val_samples} "
                                   f"test 3D MRI images")
 
-    def create_set(self, t1_paths, t2_paths, flair_paths, set_type_name):
-        flair = len(flair_paths) > 0
+    def save_slices(self, slices, patient_name, modality, main_dir, slice_min_index):
+        for slice_index in range(len(slices)):
+            # creating the directory and the file name based on the patient name and the slice
+            slice_dirname = f"slice{slice_min_index + slice_index}"
+            slice_path = os.path.join(main_dir, patient_name, slice_dirname)
+            Path(slice_path).mkdir(exist_ok=True, parents=True)
+            # saving the slice
+            slice_path = os.path.join(slice_path, f"{modality}{self.SLICES_FILE_FORMAT}")
+            np.save(slice_path, slices[slice_index])
+
+    def create_set(self, modality_paths, set_type_name):
+        if self.leading_modality is not None:
+            if self.leading_modality in modality_paths.keys():
+                logging.log(logging.INFO, f"Leading modality is {self.leading_modality}, "
+                                          f"the images will be trimmed according to images in this modality")
+        else:
+            self.leading_modality = list(modality_paths.keys())[0]
+            logging.log(logging.INFO,
+                        f"Leading modality wasn't provided, taking the first one: {self.leading_modality}, "
+                        f"the images will be trimmed according to images in this modality")
         main_dir = os.path.join(self.target_root_dir, set_type_name)
-        for index in range(len(t1_paths)):
-            print(f"Files processed {t1_paths[index]}, {t2_paths[index]}, {flair_paths[index]}")
-            print("Patient number ", index, " in process ...\n")
+        n_samples = len(modality_paths[self.leading_modality])
+        logging.log(logging.INFO, f"Creating {main_dir}, which will have data from {n_samples} patients")
 
-            raise NotImplementedError("load_nii_slices now returns just two values")
-            t1_slices, min_slice_index, max_slice_index = load_nii_slices(t1_paths[index],
-                                                                          self.transpose_order,
-                                                                          self.image_size,
-                                                                          self.MIN_SLICE_INDEX,
-                                                                          self.MAX_SLICE_INDEX,
-                                                                          target_zero_ratio=self.target_zero_ratio)
+        # in the `main_dir` create a directory for each patient and slice
+        # with corresponding modalities such that the directory structre is
+        # │ `mian_dir`
+        # │   ├── patient_name_slice e.g. UCSF_001_slice58
+        # │   │   ├── network input modalities e.g.
+        # │   │   ├── t1.npy
+        # │   │   ├── t2.npy
+        # │   │   ├── flair.npy
+        # │   │   ├── `mask_dir`
 
-            if t1_slices:
-                t2_slices, _, _ = load_nii_slices(t2_paths[index], self.transpose_order, self.image_size,
-                                                  min_slice_index, max_slice_index)
-                if flair:
-                    flair_slices, _, _ = load_nii_slices(flair_paths[index], self.transpose_order, self.image_size,
-                                                         min_slice_index, max_slice_index)
+        logging.log(logging.INFO, f"Processing the `leading_modality` ({self.leading_modality})")
+        # first iterating over the leading_modality to extract the same slices range
+        utilized_slices_indicies = []
 
-                for slice_index in range(len(t1_slices)):
-                    filepath_dirs = t1_paths[index].split(os.path.sep)
-                    if self.leave_patient_name:
-                        filename = f"patient-{filepath_dirs[-1][:-7]}-slice{min_slice_index + slice_index}{self.SLICES_FILE_FORMAT}"
-                    else:
-                        filename = f"patient-{index}-slice{min_slice_index + slice_index}{self.SLICES_FILE_FORMAT}"
+        for filepath in modality_paths[self.leading_modality]:
+            patient_name = get_youngest_dir(filepath)
+            logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process ...\n")
 
-                    # saving a t1 slice
-                    t1_slice_path = os.path.join(main_dir, "t1", filename)
-                    np.save(t1_slice_path, t1_slices[slice_index])
+            # TODO: include all with the tumor mask
+            slices, slice_indices = load_nii_slices(filepath,
+                                                    self.transpose_order,
+                                                    self.image_size,
+                                                    self.MIN_SLICE_INDEX,
+                                                    self.MAX_SLICE_INDEX,
+                                                    target_zero_ratio=self.target_zero_ratio)
 
-                    # saving a t2 slice
-                    t2_slice_path = os.path.join(main_dir, "t2", filename)
-                    np.save(t2_slice_path, t2_slices[slice_index])
+            self.save_slices(slices, patient_name, self.leading_modality, main_dir, slice_indices[0])
+            utilized_slices_indicies.append(slice_indices)
 
-                    if flair:
-                        # saving a t2 slice
-                        flair_slice_path = os.path.join(main_dir, "flair", filename)
-                        np.save(flair_slice_path, flair_slices[slice_index])
+        # having the `utilized_slices_range`
+        for index in range(n_samples):
+            for modality in modality_paths.keys():
+                patient_name = get_youngest_dir(modality_paths[modality][index])
+                # the leading modality was already processed
+                if modality == self.leading_modality:
+                    continue
 
-                    if flair:
-                        print("Created pair of t1, t2 and flair slices: ", t1_slice_path, t2_slice_path,
-                              flair_slice_path)
-                    else:
-                        print("Created pair of t1 and t2 slices: ", t1_slice_path, t2_slice_path)
+                slice_index_range = utilized_slices_indicies[index]
+                filepath = modality_paths[modality][index]
+                logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process ...\n")
+                slices, _ = load_nii_slices(filepath,
+                                            self.transpose_order,
+                                            self.image_size,
+                                            min_slice_index=slice_index_range[0],
+                                            max_slices_index=slice_index_range[-1],
+                                            target_zero_ratio=self.target_zero_ratio)
 
-                if flair:
-                    print(
-                        f"T1, T2 and FLAIR slice shape {t1_slices[0].shape} {t2_slices[0].shape} {flair_slices[0].shape}")
-                else:
-                    print(f"T1 and T2 slice shape{t1_slices[0].shape} {t2_slices[0].shape}")
-            else:
-                print("Skipped due to the shape\n")
+                self.save_slices(slices, patient_name, modality, main_dir, slice_index_range[0])
 
 
 def trim_image(image, target_image_size: Tuple[int, int]):
@@ -226,22 +230,32 @@ def trim_image(image, target_image_size: Tuple[int, int]):
 
 
 def load_nii_slices(filepath: str, transpose_order, image_size: Optional[Tuple[int, int]] = None, min_slice_index=-1,
-                    max_slices_index=-1, index_step=1, target_zero_ratio=0.9):
-    def get_optimal_slice_range(brain_slices, eps=1e-4, target_zero_ratio=0.9):
-        zero_ratios = np.array([np.sum(brain_slice < eps) / (brain_slice.shape[0] * brain_slice.shape[1])
+                    max_slices_index=-1, target_zero_ratio=0.9):
+    def get_optimal_slice_range(brain_slices, target_zero_ratio=0.9):
+        pixel_counts = np.unique(img, return_counts=True)
+
+        # if there is less than 30% of the most frequent pixel there is a risk that the background is not unified
+        if pixel_counts[1][0] / img.flatten().shape[0] < 0.3:
+            logging.log(logging.WARNING, "The method assumes that all the background pixels have the same value. "
+                                         f"In the provided volume {filepath} less than 30% of pixels have the same value.")
+        background_color = pixel_counts[0][0]
+        zero_ratios = np.array([np.sum(brain_slice == background_color) / (brain_slice.shape[0] * brain_slice.shape[1])
                                 for brain_slice in brain_slices])
         satisfying_given_ratio = np.where(zero_ratios < target_zero_ratio)[0]
-
-        # upper_bound = satisfying_given_ratio[0]
-        # lower_bound = satisfying_given_ratio[-1]
 
         return satisfying_given_ratio
 
     # noinspection PyUnresolvedReferences
-    img = nib.load(filepath).get_fdata()
+    file_extension = os.path.splitext(filepath)[1]
+    if file_extension == ".npy":
+        img = np.load(filepath)
+    elif file_extension == ".nii":
+        img = nib.load(filepath).get_fdata()
+    else:
+        raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy or .nii.gz")
 
     if max_slices_index > img.shape[-1]:  # img.shape[-1] == total number of slices
-        raise ValueError
+        raise ValueError("max_slices_index > img.shape[-1]")
 
     # in case of brain image being in wrong shape
     # we want (n_slice, img_H, img_W)
@@ -249,19 +263,14 @@ def load_nii_slices(filepath: str, transpose_order, image_size: Optional[Tuple[i
     if transpose_order is not None:
         img = np.transpose(img, transpose_order)
 
-    # an ugly way to deal with oasis different shape in the dataset
-    # if img.shape[2] != 256:
-    #     print(f"Wrong image shape {img.shape}")
-    #     return None, None, None
-
     if image_size is not None:
         img = [trim_image(brain_slice, image_size) for brain_slice in img]
 
     if min_slice_index == -1 or max_slices_index == -1:
         taken_indices = get_optimal_slice_range(img, target_zero_ratio=target_zero_ratio)
-        print(f"Slice range used for file {filepath}: {taken_indices}")
+        logging.log(logging.INFO, f"Slice range used for file {filepath}: <{min(taken_indices)}, {max(taken_indices)}>")
     else:
-        print(f"Slice range used for file {filepath}: <{min_slice_index, max_slices_index}>")
+        logging.log(logging.INFO, f"Slice range used for file {filepath}: <{min_slice_index, max_slices_index}>")
         taken_indices = range(min_slice_index, max_slices_index)
 
     selected_slices = [img[slice_index] for slice_index in taken_indices]
@@ -314,80 +323,23 @@ def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, sh
     return modalities_filepaths
 
 
-def try_create_dir(dir_name, allow_overwrite=True):
-    # TODO: simplify (maybe the function not needed with Path
-    try:
-        Path(dir_name).mkdir(parents=True, exist_ok=allow_overwrite)
-    except FileExistsError:
-        if allow_overwrite:
-            logging.warning(
-                f"Directory {dir_name} already exists. You may overwrite your files or create some collisions!")
-        else:
-            raise FileExistsError(
-                f"Directory {dir_name} already exists. If you want to overwrite it change allow_overwrite for True")
-
-    except FileNotFoundError:
-        ex = FileNotFoundError(
-            f"The path {dir_name} to directory willing to be created doesn't exist. You are in {os.getcwd()}.")
-
-        traceback.print_exception(FileNotFoundError, ex, ex.__traceback__)
-
-
-def create_segmentation_mask_dir(preprocess_dir_name, mask_dir_name, transpose_order,
-                                 new_masked_dir_name="mask", indir_reading_name="t1", mask_fingerprint="*seg.nii.gz",
-                                 output_format=".npy",
-                                 only_with_glioma=False):
-    mask_dirs = os.listdir(mask_dir_name)
-
-    dir_path = os.path.join(preprocess_dir_name, indir_reading_name)
-    print(f"Reading slices from directory: {dir_path}\n\n")
-
-    patients_slices = get_brains_slices_info(dir_path)
-
-    created_mask_dir = os.path.join(preprocess_dir_name, new_masked_dir_name)
-    try_create_dir(created_mask_dir)
-
-    print("Patients id and the slices range:")
-    for patient_id, slices_range in patients_slices.items():
-        print("Patient id: ", patient_id)
-        print("Range: ", slices_range, "\n")
-
-        print("Folder found:")
-        full_dir_name = None
-        for mask_dir in mask_dirs:
-            if "_".join(
-                    patient_id.split('_')[:-1]) in mask_dir:  # the patient ID has a "leftover" (.._t1) which is skipped
-                print(mask_dir)
-                full_dir_name = mask_dir
-                break
-
-        path_mask = os.path.join(mask_dir_name, full_dir_name)
-        like_path_mask = os.path.join(path_mask, mask_fingerprint)
-        mask_file = glob(like_path_mask)[0]
-        mask_filepath = os.path.join(path_mask, mask_file)
-
-        print(f"Used filepath to find the mask: {mask_filepath}")
-
-        if only_with_glioma:
-            # resetting found slices indices and to take only the one which have some glioma
-            # target_zero_ratio ensures that we take only with at least one pixel
-            slices_range = (-1, -1)
-            target_zero_ratio = 1.0  # excluding full zeros
-        else:
-            target_zero_ratio = None  # not caring about the zero percentage, not considered anyway when we provide range slices
-
-        mask_slices, utilized_slices = load_nii_slices(mask_filepath,
-                                                       transpose_order,
-                                                       min_slice_index=slices_range[0],
-                                                       max_slices_index=slices_range[1],
-                                                       target_zero_ratio=target_zero_ratio)  # not caring about the zero percentage
-
-        for mask, mask_real_index in zip(mask_slices, utilized_slices):
-            mask_slice_filename = f"patient-{patient_id}-slice{mask_real_index}{output_format}"
-            mask_slice_filepath = os.path.join(created_mask_dir, mask_slice_filename)
-
-            np.save(mask_slice_filepath, mask)
-            print(f"Mask file: {mask_slice_filepath} saved.")
+# def try_create_dir(dir_name, allow_overwrite=True):
+#     # TODO: simplify (maybe the function not needed with Path
+#     try:
+#         Path(dir_name).mkdir(parents=True, exist_ok=allow_overwrite)
+#     except FileExistsError:
+#         if allow_overwrite:
+#             logging.warning(
+#                 f"Directory {dir_name} already exists. You may overwrite your files or create some collisions!")
+#         else:
+#             raise FileExistsError(
+#                 f"Directory {dir_name} already exists. If you want to overwrite it change allow_overwrite for True")
+#
+#     except FileNotFoundError:
+#         ex = FileNotFoundError(
+#             f"The path {dir_name} to directory willing to be created doesn't exist. You are in {os.getcwd()}.")
+#
+#         traceback.print_exception(FileNotFoundError, ex, ex.__traceback__)
 
 
 def get_brains_slices_info(dir_name):
