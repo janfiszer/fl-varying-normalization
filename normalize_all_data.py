@@ -29,7 +29,7 @@ if __name__ == '__main__':
                                                  output_dir,
                                                  paths_from_local_dirs,
                                                  normalizers,
-                                                 n_volumes=len(normalizers))
+                                                 n_volumes=10)
     #
     # data_normalization.normalize_all_from_dir(data_dir,
     #                                           output_dir,

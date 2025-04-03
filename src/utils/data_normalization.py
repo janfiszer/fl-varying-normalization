@@ -190,7 +190,7 @@ def plot_histograms_one_slice(volumes, slice_index, brain_mask, filename=None):
 
         # Plot histogram
         ax_hist.hist(positive_values, bins=100, color='blue', edgecolor='black')
-        ax_hist.set_title(f'Histogram of pixel intensities values ({normalization_name})')
+        ax_hist.set_title(f'Normlization method: {normalization_name}')
         ax_hist.set_xlabel('Pixel intensity')
         ax_hist.set_ylabel('Frequency')
 
@@ -390,7 +390,7 @@ def demonstrate_normalization(data_dir: str,
 
                 normalizer_and_volumes[str(normalizer)] = normalized_volume
 
-            patient_file_name = fop.get_youngest_dir(volume_filepath)
+            patient_file_name = fop.get_youngest_dir(filepaths[i])
 
             plot_path = os.path.join(modality_dir, f"normalization_effect{patient_file_name}.png")
             logging.log(logging.INFO, f"Demo of normalization will be save to {plot_path}")
