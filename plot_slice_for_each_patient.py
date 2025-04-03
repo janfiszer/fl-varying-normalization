@@ -5,6 +5,7 @@ from src.utils import files_operations as fop
 from typing import Dict
 import nibabel as nib
 from configs import config
+from pathlib import Path
 
 
 def plot_and_save(data_dict, filepath):
@@ -41,7 +42,7 @@ def plot_slice_for_patient(data_dir, output_dir, path_from_local_dir: Dict, slic
     # for each modality:
     # load the data and normalize the data with the given normalizer
     # store it in a new directory
-    fop.try_create_dir(output_dir)
+    Path(data_dir).mkdir(parents=True, exist_ok=True)
     print("The sample slices will be save in: ",  output_dir)
 
     first_modality = list(all_filepaths.keys())[0]
