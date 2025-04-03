@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, List
 from collections.abc import Callable
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -242,7 +243,7 @@ def normalize_all_from_dir(data_dir: str,
 
     if save_histogram_slice_plots:
         histogram_slice_plot_dir = os.path.join(output_dir, "slices_and_histograms")
-        fop.try_create_dir(histogram_slice_plot_dir)
+        Path(histogram_slice_plot_dir).mkdir(exist_ok=True)
 
     # for each modality:
     # load the data and normalize the data with the given normalizer
@@ -251,7 +252,8 @@ def normalize_all_from_dir(data_dir: str,
     for normalizer, indices_range in normalizers_with_indices_ranges.items():
         logging.log(logging.INFO, f"Current normalizer: {normalizer}\nProcessing...")
         normalizer_path = os.path.join(output_dir, str(normalizer))
-        fop.try_create_dir(normalizer_path)
+
+        Path(normalizer_path).mkdir(exist_ok=True)
 
         if normalizer.name == "fcm":
             # loading all the
@@ -279,7 +281,8 @@ def normalize_all_from_dir(data_dir: str,
 
                 # creating a new diretory where all the images of the given patient will be saved
                 patient_new_path = os.path.join(normalizer_path, patient_file_name)
-                fop.try_create_dir(patient_new_path)
+
+                Path(patient_new_path).mkdir(exist_ok=True)
 
                 # creating the filepath where the currently processed volume will be saved
                 save_path = os.path.join(patient_new_path, f"{modality}.npy")
@@ -369,7 +372,8 @@ def demonstrate_normalization(data_dir: str,
                               n_volumes: int):
     modalities_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, n_patients=n_volumes)
 
-    fop.try_create_dir(output_dir)
+    Path(output_dir).mkdir(exist_ok=True)
+
     # loading t1 first since
     raw_t1_volumes = []
     for volume_path_index in modalities_filepaths['t1']:
@@ -378,7 +382,8 @@ def demonstrate_normalization(data_dir: str,
 
     for modality, filepaths in modalities_filepaths.items():
         modality_dir = os.path.join(output_dir, modality)
-        fop.try_create_dir(modality_dir)
+
+        Path(modality_dir).mkdir(exist_ok=True)
 
         raw_volumes = []
         for volume_filepath in filepaths:
