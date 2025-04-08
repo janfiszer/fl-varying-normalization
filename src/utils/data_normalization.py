@@ -312,6 +312,7 @@ def normalize_all_from_dir(data_dir: str,
                                                         filename=image_path)
 
                 else:
+                    normalized_volume = volume
                     logging_message = f"Mask volume from file '{current_filepath}' saved to '{save_path}'."
 
                 # saving the volume as a 3D numpy array
