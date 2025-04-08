@@ -6,14 +6,15 @@ from configs import config
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
 
-    if len(sys.argv) > 3:
-        target_root_dir = sys.argv[1]
-        current_data_dir = sys.argv[2]
-        n_patients = int(sys.argv[3])
-    else:
+    if config.LOCAL:
         target_root_dir = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test"
         current_data_dir = "C:\\Users\\JanFiszer\\data\\mri\\nomralized-UCSF-PDGM\\whitestripe"
         n_patients = -1
+    else:
+        target_root_dir = sys.argv[1]
+        current_data_dir = sys.argv[2]
+        n_patients = int(sys.argv[3])
+
 
     paths_from_local_dirs = {"t1": "t1.npy",
                              "t2": "t2.npy",
