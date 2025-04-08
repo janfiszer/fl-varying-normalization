@@ -2,12 +2,10 @@ import logging
 import os
 import random
 import re
-import traceback
 from glob import glob
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional, Dict, List, Set
 
 from pathlib import Path
-import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
 
@@ -63,6 +61,7 @@ class TransformNIIDataToNumpySlices:
     def __init__(self, target_root_dir: str,
                  origin_data_dir: str,
                  transpose_order: Tuple,
+                 mask_volume_filename: str = None,
                  leading_modality=None,
                  target_zero_ratio=0.9,
                  image_size=None,
@@ -72,9 +71,10 @@ class TransformNIIDataToNumpySlices:
         self.origin_data_dir = origin_data_dir
         self.transpose_order = transpose_order
         self.leading_modality = leading_modality
-        self.target_zero_ratio = target_zero_ratio  # TODO: mask included
+        self.target_zero_ratio = target_zero_ratio
         self.image_size = image_size
         self.leave_patient_name = leave_patient_name
+        self.mask_volume_name = mask_volume_filename
 
     @staticmethod
     def create_empty_dirs(parent_dir_path, dir_names):
@@ -92,8 +92,7 @@ class TransformNIIDataToNumpySlices:
         Path(self.target_root_dir).mkdir(exist_ok=False)
         # creating inner directories
         # in each of the returned lists (train, test, val)
-        # the order goes as follows: t1, t2, flair
-        patients_names = os.listdir(self.origin_data_dir)
+        # patients_names = os.listdir(self.origin_data_dir)
         self.create_empty_dirs(self.origin_data_dir, self.DIVISION_SETS)
 
         # loading the data
@@ -111,11 +110,6 @@ class TransformNIIDataToNumpySlices:
                 f"Validation set would be empty so the train set gonna be reduced.\nInput train_size: {train_size} validation_size: {validation_size}")
             n_val_samples = 1
             n_train_samples -= 1
-
-        # if shuffle:
-        #     filepaths = list(zip(t1_filepaths, t2_filepaths, flair_filepaths))
-        #     random.shuffle(filepaths)
-        #     t1_filepaths, t2_filepaths, flair_filepaths = zip(*filepaths)
 
         for s in self.DIVISION_SETS:
             if s == "train":
@@ -155,6 +149,7 @@ class TransformNIIDataToNumpySlices:
             np.save(slice_path, slices[slice_index])
 
     def create_set(self, modality_paths, set_type_name):
+        # verifying if all the provided parameters are valid
         if self.leading_modality is not None:
             if self.leading_modality in modality_paths.keys():
                 logging.log(logging.INFO, f"Leading modality is {self.leading_modality}, "
@@ -164,8 +159,16 @@ class TransformNIIDataToNumpySlices:
             logging.log(logging.INFO,
                         f"Leading modality wasn't provided, taking the first one: {self.leading_modality}, "
                         f"the images will be trimmed according to images in this modality")
+
+        if self.mask_volume_name:
+            if self.mask_volume_name not in modality_paths.keys():
+                raise ValueError(f"Provided `paths_from_local_dirs` with keys: {modality_paths.keys()} do not include the"
+                                 f"`mask_volume_name` ({self.mask_volume_name})")
+
+        # init the directory where the slices will be saved - `main_dir`
         main_dir = os.path.join(self.target_root_dir, set_type_name)
         n_samples = len(modality_paths[self.leading_modality])
+
         logging.log(logging.INFO, f"Creating {main_dir}, which will have data from {n_samples} patients")
 
         # in the `main_dir` create a directory for each patient and slice
@@ -178,24 +181,39 @@ class TransformNIIDataToNumpySlices:
         # │   │   ├── flair.npy
         # │   │   ├── `mask_dir`
 
+        utilized_slices_indices: List[Set] = []
+
+        # if it was provided get the slices were the mask is
+        if self.mask_volume_name:
+            logging.log(logging.INFO, f"`PROVIDED: mask_volume_name={self.mask_volume_name}`\n"
+                                      f"Taking all the slices from this key in the provided `modality_paths`")
+            for filepath in modality_paths[self.mask_volume_name]:
+                slice_indices_with_mask = get_indices_mask_slices(filepath, self.transpose_order)
+                utilized_slices_indices.append(slice_indices_with_mask)
+                logging.log(logging. INFO, f"In the directory {get_youngest_dir(filepath)} "
+                                           f"{len(slice_indices_with_mask)} slices with mask they were found")
+            num_all_slices_with_mask = sum([len(i_slices) for i_slices in utilized_slices_indices])
+            logging.log(logging.INFO, f"Checking the slices with mask: COMPLETED\nIn total there are {num_all_slices_with_mask} slices with mask")
+
+        # iterating over the `leading_modality` to extract the same slices range
         logging.log(logging.INFO, f"Processing the `leading_modality` ({self.leading_modality})")
-        # first iterating over the leading_modality to extract the same slices range
-        utilized_slices_indicies = []
-
-        for filepath in modality_paths[self.leading_modality]:
+        for i, filepath in enumerate(modality_paths[self.leading_modality]):
             patient_name = get_youngest_dir(filepath)
-            logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process ...\n")
-
+            logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process ...")
+            current_utilized_slices = utilized_slices_indices[i]
             # TODO: include all with the tumor mask
             slices, slice_indices = load_nii_slices(filepath,
                                                     self.transpose_order,
                                                     self.image_size,
-                                                    self.MIN_SLICE_INDEX,
-                                                    self.MAX_SLICE_INDEX,
+                                                    min_slices_index=min(current_utilized_slices),
+                                                    max_slices_index=max(current_utilized_slices),
                                                     target_zero_ratio=self.target_zero_ratio)
 
-            self.save_slices(slices, patient_name, self.leading_modality, main_dir, slice_indices[0])
-            utilized_slices_indicies.append(slice_indices)
+            self.save_slices(slices, patient_name, self.leading_modality, main_dir, min(slice_indices.union(current_utilized_slices)))
+            utilized_slices_indices[i].update(slice_indices)
+
+        logging.log(logging.INFO, f"The slices selection: COMPLETED\n"
+                                  f"In total there are {sum([len(i_slices) for i_slices in utilized_slices_indices])} slices")
 
         # having the `utilized_slices_range`
         for index in range(n_samples):
@@ -205,17 +223,19 @@ class TransformNIIDataToNumpySlices:
                 if modality == self.leading_modality:
                     continue
 
-                slice_index_range = utilized_slices_indicies[index]
+                slice_index_range = utilized_slices_indices[index]
+                min_slices_index, max_slices_index = min(slice_index_range), max(slice_index_range)
                 filepath = modality_paths[modality][index]
                 logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process ...\n")
                 slices, _ = load_nii_slices(filepath,
                                             self.transpose_order,
                                             self.image_size,
-                                            min_slice_index=slice_index_range[0],
-                                            max_slices_index=slice_index_range[-1],
-                                            target_zero_ratio=self.target_zero_ratio)
+                                            min_slices_index=min_slices_index,
+                                            max_slices_index=max_slices_index,
+                                            target_zero_ratio=self.target_zero_ratio,
+                                            compute_optimal_slice_range=False)
 
-                self.save_slices(slices, patient_name, modality, main_dir, slice_index_range[0])
+                self.save_slices(slices, patient_name, modality, main_dir, min_slices_index)
 
 
 def trim_image(image, target_image_size: Tuple[int, int]):
@@ -229,9 +249,29 @@ def trim_image(image, target_image_size: Tuple[int, int]):
            y_pixels_margin:target_image_size[1] + y_pixels_margin]
 
 
-def load_nii_slices(filepath: str, transpose_order, image_size: Optional[Tuple[int, int]] = None, min_slice_index=-1,
-                    max_slices_index=-1, target_zero_ratio=0.9):
-    def get_optimal_slice_range(brain_slices, target_zero_ratio=0.9):
+def get_indices_mask_slices(filepath: str, transpose_order):
+    file_extension = os.path.splitext(filepath)[1]
+    if file_extension == ".npy":
+        mask_volume = np.load(filepath)
+    elif file_extension == ".nii":
+        mask_volume = nib.load(filepath).get_fdata()
+    else:
+        raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy or .nii.gz")
+
+    # in case of brain image being in wrong shape
+    # we want (n_slice, img_H, img_W)
+    # it changes from (img_H, img_W, n_slices) to desired length
+    if transpose_order is not None:
+        mask_volume = np.transpose(mask_volume, transpose_order)
+
+    # retrieving slices where the slice have at least one pixel different from zero
+    having_any_mask = {index for index, mask_slice in enumerate(mask_volume) if np.sum(mask_slice) > 0}
+    return having_any_mask
+
+
+def load_nii_slices(filepath: str, transpose_order, image_size: Optional[Tuple[int, int]] = None, min_slices_index=-1,
+                    max_slices_index=-1, target_zero_ratio=0.9, compute_optimal_slice_range=True):
+    def get_optimal_slice_range(brain_slices):
         pixel_counts = np.unique(img, return_counts=True)
 
         # if there is less than 30% of the most frequent pixel there is a risk that the background is not unified
@@ -245,7 +285,7 @@ def load_nii_slices(filepath: str, transpose_order, image_size: Optional[Tuple[i
 
         return satisfying_given_ratio
 
-    # noinspection PyUnresolvedReferences
+    # loading the file
     file_extension = os.path.splitext(filepath)[1]
     if file_extension == ".npy":
         img = np.load(filepath)
@@ -266,16 +306,34 @@ def load_nii_slices(filepath: str, transpose_order, image_size: Optional[Tuple[i
     if image_size is not None:
         img = [trim_image(brain_slice, image_size) for brain_slice in img]
 
-    if min_slice_index == -1 or max_slices_index == -1:
-        taken_indices = get_optimal_slice_range(img, target_zero_ratio=target_zero_ratio)
-        logging.log(logging.INFO, f"Slice range used for file {filepath}: <{min(taken_indices)}, {max(taken_indices)}>")
-    else:
-        logging.log(logging.INFO, f"Slice range used for file {filepath}: <{min_slice_index, max_slices_index}>")
-        taken_indices = range(min_slice_index, max_slices_index)
+    # by default the range is given in the function
+    upper_bounder = max_slices_index
+    lower_bounder = min_slices_index
 
+    if compute_optimal_slice_range:
+        taken_indices = get_optimal_slice_range(img)
+        if len(taken_indices) == 0:
+            raise ValueError(
+                "No brain slices with the substantial portion of brain (greater than `target_zero_ratio`), increase this value.")
+        min_substantial_brain = min(taken_indices)
+        max_substantial_brain = max(taken_indices)
+
+        if min_slices_index == -1 or min_substantial_brain < min_slices_index:
+            lower_bounder = min_substantial_brain
+
+        if max_slices_index == -1 or max_substantial_brain > max_slices_index:
+            upper_bounder = max_substantial_brain
+    else:
+        if min_slices_index == -1 or max_slices_index == -1:
+            raise ValueError("The `min_slices_index` and `max_slices_index` have to "
+                             "be provided in case the `compute_optimal_slice_range` is False")
+
+    logging.log(logging.INFO, f"Slice range used for file {filepath}: <{lower_bounder}, {upper_bounder}>")
+
+    taken_indices = range(lower_bounder, upper_bounder + 1)
     selected_slices = [img[slice_index] for slice_index in taken_indices]
 
-    return selected_slices, taken_indices
+    return selected_slices, set(taken_indices)
 
 
 def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, shuffle_local_dirs=False):
@@ -297,19 +355,24 @@ def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, sh
             # all directories are visited (for ends)
             # the number of patients is fulfilled (i >= n_patients)
             break
-        # just for one dataset purposes
-        # inside_dir = local_dirs[i].split('_')[0]
 
         for modality, filepath_from_data_dir in filepaths_from_data_dir.items():
             alike_path = os.path.join(data_dir, local_dir, filepath_from_data_dir)
             retrieved_filepaths = sorted(glob(alike_path))
 
             if len(retrieved_filepaths) == 0:  # if not any found the directory is skipped
+                logging.log(logging.WARNING, f"In file {local_dir} there were no alike filepaths ({alike_path}), so the patient is skipped.")
+                # removing last elements for this patient from the already processed modalities
+                for modality_to_remove in filepaths_from_data_dir.keys():
+                    # only until the current patients are removed
+                    if modality_to_remove == modality:
+                        break
+                    modalities_filepaths[modality_to_remove] = modalities_filepaths[modality_to_remove][:-1]
                 break
             elif len(retrieved_filepaths) > 1:
                 raise ValueError("More than one file with the provided regex: ", alike_path)
 
-            modalities_filepaths[modality].extend(retrieved_filepaths)
+            modalities_filepaths[modality].append(retrieved_filepaths[0])
 
         i += 1
 
@@ -323,68 +386,9 @@ def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, sh
     return modalities_filepaths
 
 
-# def try_create_dir(dir_name, allow_overwrite=True):
-#     # TODO: simplify (maybe the function not needed with Path
-#     try:
-#         Path(dir_name).mkdir(parents=True, exist_ok=allow_overwrite)
-#     except FileExistsError:
-#         if allow_overwrite:
-#             logging.warning(
-#                 f"Directory {dir_name} already exists. You may overwrite your files or create some collisions!")
-#         else:
-#             raise FileExistsError(
-#                 f"Directory {dir_name} already exists. If you want to overwrite it change allow_overwrite for True")
-#
-#     except FileNotFoundError:
-#         ex = FileNotFoundError(
-#             f"The path {dir_name} to directory willing to be created doesn't exist. You are in {os.getcwd()}.")
-#
-#         traceback.print_exception(FileNotFoundError, ex, ex.__traceback__)
-
-
-def get_brains_slices_info(dir_name):
-    filenames = os.listdir(dir_name)
-    patient_slices = {}
-
-    # the file is in the format e.g. patient-Brats18_TCIA10_420_1_t1-slice108.npy
-    # we are extracting ID which is always between "-"
-    # in this case Brats18_TCIA10_420_1_t1
-    # list(set(...)) for extracting unique values
-    patients_id = list(set([f.split('-')[1] for f in filenames]))
-    # patients_id = list(set([f.split('-')[-2] for f in filenames]))
-
-    for patient_id in patients_id:
-        slices_nr = []
-        for f in filenames:
-            if patient_id in f:
-                slices_nr.append(int(re.search(r'slice(\d+)', f).group(1)))
-
-        patient_slices[patient_id] = (min(slices_nr), max(slices_nr))
-
-    return patient_slices
-
-
-# def get_all_brains_slices_info(ds_dir_name):
-#     test_patients_slices = get_brains_slices_info(os.path.join(ds_dir_name, "test"))
-#     train_patients_slices = get_brains_slices_info(os.path.join(ds_dir_name, "train"))
-#     validation_patients_slices = get_brains_slices_info(os.path.join(ds_dir_name, "validation"))
-
-#     return train_patients_slices, test_patients_slices, validation_patients_slices
-
-
 def get_youngest_dir(filepath):
-    return filepath.split(os.path.sep)[-2]
+    filepath_split = filepath.split(os.path.sep)
+    if len(filepath_split) < 2:
+        raise ValueError(f"The provided filepath ({filepath}) is only a file name (no path separators)")
+    return filepath_split[-2]
 
-
-def test_mask_in(img_name, img_dir, breakpoint=10, failed_dir="failed"):
-    img = np.load(os.path.join(img_dir, img_name))
-
-    if np.sum(img[:, :breakpoint]):
-        plt.imshow(img > 0)
-        plt.savefig(os.path.join(failed_dir, img_name))
-        print("\n\nWRONG MASKS IN THE IMAGE: ", img_name)
-
-        return False
-
-    else:
-        return True
