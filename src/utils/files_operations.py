@@ -134,7 +134,7 @@ class TransformNIIDataToNumpySlices:
 
             self.create_set(train_test_split_sets, s)
 
-        logging.log(logging.INFO, f"\nSUCCESS\nCreated train and test directories in {self.target_root_dir} "
+        logging.log(logging.INFO, f"SUCCESS\nCreated train and test directories in {self.target_root_dir} "
                                   f"from {n_train_samples} train, {n_val_samples} validation and {n_samples - n_train_samples - n_val_samples} "
                                   f"test 3D MRI images")
 
@@ -199,7 +199,7 @@ class TransformNIIDataToNumpySlices:
         logging.log(logging.INFO, f"Processing the `leading_modality` ({self.leading_modality})")
         for i, filepath in enumerate(modality_paths[self.leading_modality]):
             patient_name = get_youngest_dir(filepath)
-            logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process ...")
+            logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process...")
             current_utilized_slices = utilized_slices_indices[i]
             # TODO: include all with the tumor mask
             slices, slice_indices = load_nii_slices(filepath,
@@ -226,7 +226,7 @@ class TransformNIIDataToNumpySlices:
                 slice_index_range = utilized_slices_indices[index]
                 min_slices_index, max_slices_index = min(slice_index_range), max(slice_index_range)
                 filepath = modality_paths[modality][index]
-                logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process ...\n")
+                logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process...")
                 slices, _ = load_nii_slices(filepath,
                                             self.transpose_order,
                                             self.image_size,
@@ -376,12 +376,12 @@ def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, sh
 
         i += 1
 
-    local_dirs_string = '\n'.join([loc_dir for loc_dir in local_dirs])
+    used_local_dirs_string = '\n'.join([loc_dir for loc_dir in local_dirs[:i]])
     modalities_counts = {modality: len(filepaths) for modality, filepaths in modalities_filepaths.items()}
 
     logging.log(logging.INFO,
                 f"For the provided parameters, found {modalities_counts} by reading from files (with limit of {n_patients} patients):\n"
-                f"{local_dirs_string}\n\n")
+                f"{[used_local_dirs_string]}\n\n")
 
     return modalities_filepaths
 
