@@ -381,7 +381,7 @@ def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, sh
 
     logging.log(logging.INFO,
                 f"For the provided parameters, found {modalities_counts} by reading from files (with limit of {n_patients} patients):\n"
-                f"{[used_local_dirs_string]}\n\n")
+                f"{used_local_dirs_string}\n\n")
 
     return modalities_filepaths
 
