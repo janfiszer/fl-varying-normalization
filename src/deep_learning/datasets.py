@@ -70,10 +70,9 @@ class SegmentationDataset2DSlices(Dataset):
             np_target = self._trim_image(np_target)
 
         tensor_image = torch.from_numpy(np_image)
-        tensor_target = torch.from_numpy(np_target)
+        tensor_target = torch.from_numpy(np.expand_dims(np_target, axis=0))
 
         # tensor_image = torch.from_numpy(np.expand_dims(np_image, axis=0))
-        # tensor_target = torch.from_numpy(np.expand_dims(np_target, axis=0))
 
         if self.binarize_mask:
             tensor_target = tensor_target > 0
