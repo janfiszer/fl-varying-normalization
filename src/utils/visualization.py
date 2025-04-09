@@ -13,7 +13,8 @@ def plot_all_modalities_and_target(
     column_names=None,    # List[str]: optional, len = num_modalities + 1 (or +2 if predictions are included)
     row_names=None,       # List[str]: optional, len = number of samples
     rotate_deg=0,         # int or float: degrees to rotate images (applied to all)
-    predictions_list=None # Optional[List[torch.Tensor]]: if provided, same length as images_list
+    predictions_list=None, # Optional[List[torch.Tensor]]: if provided, same length as images_list
+    savepath=None
 ):
     num_samples = len(images_list)
     num_modalities = len(images_list[0])
@@ -75,4 +76,8 @@ def plot_all_modalities_and_target(
                 ax.set_ylabel(row_names[row], fontsize=12, rotation=0, labelpad=40, va='center')
 
     plt.tight_layout()
-    plt.show()
+
+    if savepath:
+        plt.savefig(savepath)
+    else:
+        plt.show()
