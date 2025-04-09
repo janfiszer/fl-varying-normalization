@@ -1,19 +1,15 @@
 import logging
 import os
 import random
-import re
 from glob import glob
 from typing import Tuple, Optional, Dict, List, Set
 
 from pathlib import Path
-import nibabel as nib
 import numpy as np
 
 
 class TransformVolumesToNumpySlices:
     # by investigation in eda.ipynb obtained
-    # MIN_SLICE_INDEX = 50
-    # MAX_SLICE_INDEX = 125
     MIN_SLICE_INDEX = -1
     MAX_SLICE_INDEX = -1
     SLICES_FILE_FORMAT = ".npy"
@@ -202,12 +198,12 @@ class TransformVolumesToNumpySlices:
             logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process...")
             current_utilized_slices = utilized_slices_indices[i]
             # TODO: include all with the tumor mask
-            slices, slice_indices = load_nii_slices(filepath,
-                                                    self.transpose_order,
-                                                    self.image_size,
-                                                    min_slices_index=min(current_utilized_slices),
-                                                    max_slices_index=max(current_utilized_slices),
-                                                    target_zero_ratio=self.target_zero_ratio)
+            slices, slice_indices = smart_load_slices(filepath,
+                                                      self.transpose_order,
+                                                      self.image_size,
+                                                      min_slices_index=min(current_utilized_slices),
+                                                      max_slices_index=max(current_utilized_slices),
+                                                      target_zero_ratio=self.target_zero_ratio)
 
             self.save_slices(slices, patient_name, self.leading_modality, main_dir, min(slice_indices.union(current_utilized_slices)))
             utilized_slices_indices[i].update(slice_indices)
@@ -227,13 +223,13 @@ class TransformVolumesToNumpySlices:
                 min_slices_index, max_slices_index = min(slice_index_range), max(slice_index_range)
                 filepath = modality_paths[modality][index]
                 logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process...")
-                slices, _ = load_nii_slices(filepath,
-                                            self.transpose_order,
-                                            self.image_size,
-                                            min_slices_index=min_slices_index,
-                                            max_slices_index=max_slices_index,
-                                            target_zero_ratio=self.target_zero_ratio,
-                                            compute_optimal_slice_range=False)
+                slices, _ = smart_load_slices(filepath,
+                                              self.transpose_order,
+                                              self.image_size,
+                                              min_slices_index=min_slices_index,
+                                              max_slices_index=max_slices_index,
+                                              target_zero_ratio=self.target_zero_ratio,
+                                              compute_optimal_slice_range=False)
 
                 self.save_slices(slices, patient_name, modality, main_dir, min_slices_index)
 
@@ -253,10 +249,8 @@ def get_indices_mask_slices(filepath: str, transpose_order):
     file_extension = os.path.splitext(filepath)[1]
     if file_extension == ".npy":
         mask_volume = np.load(filepath)
-    elif file_extension == ".nii":
-        mask_volume = nib.load(filepath).get_fdata()
     else:
-        raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy or .nii.gz")
+        raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
 
     # in case of brain image being in wrong shape
     # we want (n_slice, img_H, img_W)
@@ -269,8 +263,8 @@ def get_indices_mask_slices(filepath: str, transpose_order):
     return having_any_mask
 
 
-def load_nii_slices(filepath: str, transpose_order, image_size: Optional[Tuple[int, int]] = None, min_slices_index=-1,
-                    max_slices_index=-1, target_zero_ratio=0.9, compute_optimal_slice_range=True):
+def smart_load_slices(filepath: str, transpose_order, image_size: Optional[Tuple[int, int]] = None, min_slices_index=-1,
+                      max_slices_index=-1, target_zero_ratio=0.9, compute_optimal_slice_range=True):
     def get_optimal_slice_range(brain_slices):
         pixel_counts = np.unique(img, return_counts=True)
 
@@ -289,10 +283,8 @@ def load_nii_slices(filepath: str, transpose_order, image_size: Optional[Tuple[i
     file_extension = os.path.splitext(filepath)[1]
     if file_extension == ".npy":
         img = np.load(filepath)
-    elif file_extension == ".nii":
-        img = nib.load(filepath).get_fdata()
     else:
-        raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy or .nii.gz")
+        raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
 
     if max_slices_index > img.shape[-1]:  # img.shape[-1] == total number of slices
         raise ValueError("max_slices_index > img.shape[-1]")
