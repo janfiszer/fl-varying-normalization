@@ -1,6 +1,6 @@
 import sys
 import logging
-from src.utils.files_operations import TransformNIIDataToNumpySlices
+from src.utils.files_operations import TransformVolumesToNumpySlices
 from configs import config
 
 if __name__ == '__main__':
@@ -21,7 +21,7 @@ if __name__ == '__main__':
                              "flair": "flair.npy",
                              "mask": "mask.npy"
                              }
-    transformer = TransformNIIDataToNumpySlices(target_root_dir,
+    transformer = TransformVolumesToNumpySlices(target_root_dir,
                                                 current_data_dir,
                                                 mask_volume_filename="mask",
                                                 transpose_order=(2, 0, 1),

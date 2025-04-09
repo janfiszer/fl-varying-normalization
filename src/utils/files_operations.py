@@ -10,7 +10,7 @@ import nibabel as nib
 import numpy as np
 
 
-class TransformNIIDataToNumpySlices:
+class TransformVolumesToNumpySlices:
     # by investigation in eda.ipynb obtained
     # MIN_SLICE_INDEX = 50
     # MAX_SLICE_INDEX = 125
