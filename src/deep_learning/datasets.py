@@ -3,11 +3,12 @@ import os
 from glob import glob
 from typing import List, Tuple
 
+from src.utils.files_operations import smart_load_slices, get_nii_filepaths, TransformVolumesToNumpySlices
+
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from src.utils.files_operations import load_nii_slices, get_nii_filepaths, TransformVolumesToNumpySlices, trim_image
 
 
 class SegmentationDataset2DSlices(Dataset):
@@ -68,8 +69,11 @@ class SegmentationDataset2DSlices(Dataset):
             np_image = self._trim_image(np_image)
             np_target = self._trim_image(np_target)
 
-        tensor_image = torch.from_numpy(np.expand_dims(np_image, axis=0))
-        tensor_target = torch.from_numpy(np.expand_dims(np_target, axis=0))
+        tensor_image = torch.from_numpy(np_image)
+        tensor_target = torch.from_numpy(np_target)
+
+        # tensor_image = torch.from_numpy(np.expand_dims(np_image, axis=0))
+        # tensor_target = torch.from_numpy(np.expand_dims(np_target, axis=0))
 
         if self.binarize_mask:
             tensor_target = tensor_target > 0
@@ -141,13 +145,13 @@ class MRIDatasetNII(Dataset):
         self.images, self.targets = [], []
 
         for img_path in images_filepaths:
-            slices, _, _ = load_nii_slices(img_path, transform_order, image_size, self.MIN_SLICE_INDEX,
-                                           self.MAX_SLICE_INDEX)
+            slices, _, _ = smart_load_slices(img_path, transform_order, image_size, self.MIN_SLICE_INDEX,
+                                             self.MAX_SLICE_INDEX)
             self.images.extend(slices)
 
         for target_path in targets_filepaths:
-            slices, _, _ = load_nii_slices(target_path, transform_order, image_size, self.MIN_SLICE_INDEX,
-                                           self.MAX_SLICE_INDEX)
+            slices, _, _ = smart_load_slices(target_path, transform_order, image_size, self.MIN_SLICE_INDEX,
+                                             self.MAX_SLICE_INDEX)
             self.targets.extend(slices)
 
     def __len__(self):
