@@ -25,8 +25,9 @@ if __name__ == '__main__':
                                                 current_data_dir,
                                                 mask_volume_filename="mask",
                                                 transpose_order=(2, 0, 1),
-                                                target_zero_ratio=0.78)
+                                                target_zero_ratio=0.8)
 
     transformer.create_train_val_test_sets(paths_from_local_dirs,
-                                           train_size=0.8,
+                                           train_size=0.75,
+                                           validation_size=0.05,
                                            n_patients=n_patients)
