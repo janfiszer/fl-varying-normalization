@@ -34,7 +34,7 @@ if __name__ == '__main__':
                 else:
                     logging.log(logging.INFO, "The shapes are matching.")
 
-    plot_all_modalities_and_target(images, targets, predictions_list=targets, column_names=["t1", "t2", "flair", "mask"], rotate_deg=270)
+    plot_all_modalities_and_target(images, targets, column_names=["t1", "t2", "flair", "mask"], rotate_deg=270)
 
 
 
