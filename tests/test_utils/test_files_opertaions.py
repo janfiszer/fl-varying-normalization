@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Import the module to test
 from src.utils.files_operations import (
-    TransformNIIDataToNumpySlices,
+    TransformVolumesToNumpySlices,
     trim_image,
     get_indices_mask_slices,
     load_nii_slices,
@@ -257,7 +257,7 @@ class TestTransformNIIDataToNumpySlices(unittest.TestCase):
         os.makedirs(os.path.join(self.origin_dir, 'patient2'))
 
         # Setup basic parameters for the transformer
-        self.transformer = TransformNIIDataToNumpySlices(
+        self.transformer = TransformVolumesToNumpySlices(
             target_root_dir=self.target_dir,
             origin_data_dir=self.origin_dir,
             transpose_order=(2, 0, 1),
@@ -275,7 +275,7 @@ class TestTransformNIIDataToNumpySlices(unittest.TestCase):
         test_dir = tempfile.mkdtemp()
         try:
             dir_names = ['dir1', 'dir2', 'dir3']
-            TransformNIIDataToNumpySlices.create_empty_dirs(test_dir, dir_names)
+            TransformVolumesToNumpySlices.create_empty_dirs(test_dir, dir_names)
 
             # Check if directories were created
             for dirname in dir_names:

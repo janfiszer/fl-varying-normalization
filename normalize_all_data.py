@@ -10,7 +10,7 @@ if __name__ == '__main__':
         n_patients = -1
         # data_dir = "C:\\Users\\JanFiszer\\data\\mri\\flair_volumes"
         data_dir = "C:\\Users\\JanFiszer\\data\\mri\\UCSF-PDGM"
-        output_dir = "C:\\Users\\JanFiszer\\data\\mri\\testPath-nomralized-UCSF-PDGM"
+        output_dir = "C:\\Users\\JanFiszer\\data\\mri\\nomralized-UCSF-PDGM"
         # output_dir = "C:\\Users\\JanFiszer\\data\\mri\\normalized"
         paths_from_local_dirs = {"t1": "*t1.nii.gz",
                                  "t2": "*t2.nii.gz",
