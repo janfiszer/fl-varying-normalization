@@ -6,7 +6,6 @@ from typing import List, Tuple
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose
 
 from src.utils.files_operations import load_nii_slices, get_nii_filepaths, TransformVolumesToNumpySlices, trim_image
 
@@ -127,7 +126,7 @@ class MRIDatasetNII(Dataset):
     MAX_SLICE_INDEX = 125
     STEP = 1
 
-    def __init__(self, data_dir: str, t1_filepath_from_data_dir, t2_filepath_from_data_dir, transform: Compose,
+    def __init__(self, data_dir: str, t1_filepath_from_data_dir, t2_filepath_from_data_dir, transform,
                  image_size=None, transform_order=None, n_patients=1, t1_to_t2=True):
         self.data_dir = data_dir
         self.transform = transform
