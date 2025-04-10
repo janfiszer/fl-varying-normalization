@@ -81,3 +81,6 @@ def plot_all_modalities_and_target(
         plt.savefig(savepath)
     else:
         plt.show()
+
+    plt.close()
+    
