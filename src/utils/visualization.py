@@ -7,14 +7,16 @@ from torch import Tensor
 
 import math
 
+
 def plot_all_modalities_and_target(
-    images_list,          # List[List[torch.Tensor]]: each sample has 3 modality images (2D tensors)
-    targets_list,         # List[torch.Tensor]: each is a 2D tensor (target)
-    column_names=None,    # List[str]: optional, len = num_modalities + 1 (or +2 if predictions are included)
-    row_names=None,       # List[str]: optional, len = number of samples
-    rotate_deg=0,         # int or float: degrees to rotate images (applied to all)
-    predictions_list=None, # Optional[List[torch.Tensor]]: if provided, same length as images_list
-    savepath=None
+        images_list,  # List[List[torch.Tensor]]: each sample has 3 modality images (2D tensors)
+        targets_list,  # List[torch.Tensor]: each is a 2D tensor (target)
+        predictions_list=None,  # Optional[List[torch.Tensor]]: if provided, same length as images_list
+        title=None,  # str: title in plt.title
+        column_names=None,  # List[str]: optional, len = num_modalities + 1 (or +2 if predictions are included)
+        row_names=None,  # List[str]: optional, len = number of samples
+        rotate_deg=0,  # int or float: degrees to rotate images (applied to all)
+        savepath=None
 ):
     num_samples = len(images_list)
     num_modalities = len(images_list[0])
@@ -63,6 +65,9 @@ def plot_all_modalities_and_target(
             if rotate_deg != 0:
                 img_np = np.rot90(img_np, k=rotate_deg // 90)
 
+            if len(img_np.shape) > 2:
+                img_np = np.squeeze(img_np)
+
             ax.imshow(img_np, cmap=cmap)
             ax.axis('off')
 
@@ -77,10 +82,12 @@ def plot_all_modalities_and_target(
 
     plt.tight_layout()
 
+    if title:
+        fig.suptitle(title)
+
     if savepath:
         plt.savefig(savepath)
     else:
         plt.show()
 
     plt.close()
-    
