@@ -1,6 +1,7 @@
 import logging
 import sys
 from os import path
+from pathlib import Path
 
 from configs import config
 from src.utils.visualization import plot_all_modalities_and_target
@@ -13,13 +14,16 @@ if __name__ == '__main__':
         data_dir_ares = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\validation"
     else:
         data_dir_ares = sys.argv[1]
+    visualization_dir = "batches_visualization"
+    visualization_path = path.join(data_dir_ares, visualization_dir)
+    Path(visualization_path).mkdir(exist_ok=True)
 
-    dataset = SegmentationDataset2DSlices(data_dir_ares, ["t1", "t2", "flair"], "mask", binarize_mask=True)
+    dataset = SegmentationDataset2DSlices(data_dir_ares, config.USED_MODALITIES, config.MASK_DIR, binarize_mask=True)
 
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=8, shuffle=False)
 
     first_iteration = True
-    for images, targets in dataloader:
+    for i, (images, targets) in enumerate(dataloader):
         for image, target in zip(images, targets):
             if first_iteration:
                 image_shape = image.shape
@@ -31,9 +35,12 @@ if __name__ == '__main__':
                 elif target.shape != target_shape:
                     logging.log(logging.WARNING, f"The shapes are different", target_shape, "!=", target.shape)
                 else:
-                    logging.log(logging.INFO, "The shapes are matching.")
+                    logging.log(logging.DEBUG, "The shapes are matching.")
+        plot_all_modalities_and_target(images, targets, column_names=config.USED_MODALITIES + [config.MASK_DIR], rotate_deg=270, savepath=path.join(visualization_path, f"batch{i}_dataset_test.jpg"))
 
-    plot_all_modalities_and_target(images, targets, column_names=["t1", "t2", "flair", "mask"], rotate_deg=270, savepath=path.join(data_dir_ares, "last_batch_dataset_test.jpg"))
+    logging.log(logging.INFO, "Testing process: ENDED")
+
+    # plot_all_modalities_and_target(images, targets, column_names=["t1", "t2", "flair", "mask"], rotate_deg=270, savepath=path.join(data_dir_ares, "last_batch_dataset_test.jpg"))
 
 
 
