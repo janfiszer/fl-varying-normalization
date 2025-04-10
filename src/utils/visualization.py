@@ -15,7 +15,7 @@ def plot_all_modalities_and_target(
         title=None,  # str: title in plt.title
         column_names=None,  # List[str]: optional, len = num_modalities + 1 (or +2 if predictions are included)
         row_names=None,  # List[str]: optional, len = number of samples
-        rotate_deg=0,  # int or float: degrees to rotate images (applied to all)
+        rotate_deg=270,  # int or float: degrees to rotate images (applied to all)
         savepath=None
 ):
     num_samples = len(images_list)
@@ -30,7 +30,7 @@ def plot_all_modalities_and_target(
     include_predictions = predictions_list is not None
     total_columns = num_modalities + 1 + int(include_predictions)  # modalities + target [+ prediction]
 
-    fig, axes = plt.subplots(num_samples, total_columns, figsize=(4 * total_columns, 4 * num_samples))
+    fig, axes = plt.subplots(num_samples, total_columns, figsize=(4 * total_columns, 4 * num_samples + 2))
 
     # Ensure axes is always 2D
     if num_samples == 1:
