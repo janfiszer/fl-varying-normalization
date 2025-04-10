@@ -35,7 +35,12 @@ if __name__ == '__main__':
                     logging.log(logging.ERROR, f"The shapes are different", target_shape, "!=", target.shape)
                 else:
                     logging.log(logging.DEBUG, "The shapes are matching.")
-        plot_all_modalities_and_target(images, targets, column_names=config.USED_MODALITIES + [config.MASK_DIR], rotate_deg=270, savepath=path.join(visualization_path, f"batch{i}_dataset_test.jpg"))
+        try:
+            plot_all_modalities_and_target(images, targets, column_names=config.USED_MODALITIES + [config.MASK_DIR], rotate_deg=270, savepath=path.join(visualization_path, f"batch{i}_dataset_test.jpg"))
+
+        except TypeError:
+            logging.warning(f"In the files: {dataloader.dataset.modalities_filepaths[i]}, {dataloader.dataset.target_filepaths[i]} some the image shape are invalid."
+                            f"\nInput shape: {images.shape}\nMask shape: {targets.shape}")
 
     logging.log(logging.INFO, "Testing process: ENDED")
 
