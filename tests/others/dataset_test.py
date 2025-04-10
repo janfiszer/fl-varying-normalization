@@ -22,6 +22,8 @@ if __name__ == '__main__':
 
     dataloader = DataLoader(dataset, batch_size=8, shuffle=False)
 
+    inner_index = 0
+
     for i, (images, targets) in enumerate(dataloader):
         for image, target in zip(images, targets):
             # getting the shapes in the first itteration
@@ -35,11 +37,12 @@ if __name__ == '__main__':
                     logging.log(logging.ERROR, f"The shapes are different", target_shape, "!=", target.shape)
                 else:
                     logging.log(logging.DEBUG, "The shapes are matching.")
+            inner_index += 1
         try:
             plot_all_modalities_and_target(images, targets, column_names=config.USED_MODALITIES + [config.MASK_DIR], rotate_deg=270, savepath=path.join(visualization_path, f"batch{i}_dataset_test.jpg"))
 
         except TypeError:
-            logging.warning(f"In the files: {dataloader.dataset.modalities_filepaths[i]}, {dataloader.dataset.target_filepaths[i]} some the image shape are invalid."
+            logging.warning(f"In the files: {dataloader.dataset.modalities_filepaths[inner_index]}, {dataloader.dataset.target_filepaths[inner_index]} some the image shape are invalid."
                             f"\nInput shape: {images.shape}\nMask shape: {targets.shape}")
 
     logging.log(logging.INFO, "Testing process: ENDED")
