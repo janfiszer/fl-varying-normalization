@@ -50,25 +50,29 @@ def plot_all_modalities_and_target(
             if col < num_modalities:
                 img = sample_modalities[col]
                 cmap = "gray"
+                v_max = None
             elif col == num_modalities:
                 cmap = "plasma"
                 img = target
+                v_max = 1
             else:
                 cmap = "plasma"
                 img = prediction
+                v_max = 1
 
             if not isinstance(img, torch.Tensor):
                 raise TypeError("All images, targets, and predictions must be torch.Tensor instances.")
 
-            # Convert to NumPy and rotate if needed
+            # Convert to NumPy, squeeze and rotate if needed
             img_np = img.numpy()
-            if rotate_deg != 0:
-                img_np = np.rot90(img_np, k=rotate_deg // 90)
 
             if len(img_np.shape) > 2:
                 img_np = np.squeeze(img_np)
 
-            ax.imshow(img_np, cmap=cmap)
+            if rotate_deg != 0:
+                img_np = np.rot90(img_np, k=rotate_deg // 90)
+
+            ax.imshow(img_np, cmap=cmap, v_max=v_max)
             ax.axis('off')
 
             # Add column titles
