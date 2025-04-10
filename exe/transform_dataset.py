@@ -5,7 +5,7 @@ from configs import config
 
 if __name__ == '__main__':
     if config.LOCAL:
-        target_root_dir = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test"
+        target_root_dir = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_max_zero_ratio_mask_test"
         current_data_dir = "C:\\Users\\JanFiszer\\data\\mri\\nomralized-UCSF-PDGM\\whitestripe"
         n_patients = -1
     else:
@@ -23,7 +23,8 @@ if __name__ == '__main__':
                                                 current_data_dir,
                                                 mask_volume_filename="mask",
                                                 transpose_order=(2, 0, 1),
-                                                target_zero_ratio=0.8)
+                                                target_zero_ratio=0.8,
+                                                max_zero_ratio_on_slice_with_tumor=0.95)
 
     transformer.create_train_val_test_sets(paths_from_local_dirs,
                                            train_size=0.75,

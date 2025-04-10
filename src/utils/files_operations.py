@@ -58,9 +58,10 @@ class TransformVolumesToNumpySlices:
                  origin_data_dir: str,
                  transpose_order: Tuple,
                  mask_volume_filename: str = None,
+                 max_zero_ratio_on_slice_with_tumor: float = 0.95,
                  leading_modality=None,
                  target_zero_ratio=0.9,
-                 image_size=None,
+                 image_size: Optional[Tuple[int, int]] = None,
                  leave_patient_name=True):
 
         self.target_root_dir = target_root_dir
@@ -69,6 +70,7 @@ class TransformVolumesToNumpySlices:
         self.leading_modality = leading_modality
         self.target_zero_ratio = target_zero_ratio
         self.image_size = image_size
+        self.max_zero_ratio_on_slice_with_tumor = max_zero_ratio_on_slice_with_tumor
         self.leave_patient_name = leave_patient_name
         self.mask_volume_name = mask_volume_filename
 
@@ -158,8 +160,9 @@ class TransformVolumesToNumpySlices:
 
         if self.mask_volume_name:
             if self.mask_volume_name not in modality_paths.keys():
-                raise ValueError(f"Provided `paths_from_local_dirs` with keys: {modality_paths.keys()} do not include the"
-                                 f"`mask_volume_name` ({self.mask_volume_name})")
+                raise ValueError(
+                    f"Provided `paths_from_local_dirs` with keys: {modality_paths.keys()} do not include the"
+                    f"`mask_volume_name` ({self.mask_volume_name})")
 
         # init the directory where the slices will be saved - `main_dir`
         main_dir = os.path.join(self.target_root_dir, set_type_name)
@@ -184,12 +187,20 @@ class TransformVolumesToNumpySlices:
             logging.log(logging.INFO, f"`PROVIDED: mask_volume_name={self.mask_volume_name}`\n"
                                       f"Taking all the slices from this key in the provided `modality_paths`")
             for filepath in modality_paths[self.mask_volume_name]:
-                slice_indices_with_mask = get_indices_mask_slices(filepath, self.transpose_order)
-                utilized_slices_indices.append(slice_indices_with_mask)
+                mask_volume = np.load(filepath)
+                # TODO: here there is an error!! to little slices for 95% tolerance...
+                slice_indices_with_minimum_brain_for_mask = self.get_optimal_slice_range(mask_volume,
+                                                                                         self.max_zero_ratio_on_slice_with_tumor,
+                                                                                         slices_id=filepath)
+                slice_indices_with_mask = self.get_indices_mask_slices(mask_volume)
+
+                slices_indices_intersection = slice_indices_with_minimum_brain_for_mask.intersection(slice_indices_with_mask)
+                utilized_slices_indices.append(slices_indices_intersection)
                 logging.log(logging.INFO, f"In the directory {get_youngest_dir(filepath)} "
-                                           f"{len(slice_indices_with_mask)} slices with mask they were found")
+                                          f"{len(slices_indices_intersection)} slices with mask they were found")
             num_all_slices_with_mask = sum([len(i_slices) for i_slices in utilized_slices_indices])
-            logging.log(logging.INFO, f"Checking the slices with mask: COMPLETED\nIn total there are {num_all_slices_with_mask} slices with mask")
+            logging.log(logging.INFO,
+                        f"Checking the slices with mask: COMPLETED\nIn total there are {num_all_slices_with_mask} slices with mask")
 
         # iterating over the `leading_modality` to extract the same slices range
         logging.log(logging.INFO, f"Processing the `leading_modality` ({self.leading_modality})")
@@ -198,14 +209,13 @@ class TransformVolumesToNumpySlices:
             logging.log(logging.DEBUG, f"File processed {filepath}\nPatient: {patient_name} in process...")
             current_utilized_slices = utilized_slices_indices[i]
 
-            slices, slice_indices = smart_load_slices(filepath,
-                                                      self.transpose_order,
-                                                      self.image_size,
-                                                      min_slices_index=min(current_utilized_slices),
-                                                      max_slices_index=max(current_utilized_slices),
-                                                      target_zero_ratio=self.target_zero_ratio)
+            slices, slice_indices = self.smart_load_slices(filepath,
+                                                           min_slices_index=min(current_utilized_slices),
+                                                           max_slices_index=max(current_utilized_slices),
+                                                           target_zero_ratio=self.target_zero_ratio)
 
-            self.save_slices(slices, patient_name, self.leading_modality, main_dir, min(slice_indices.union(current_utilized_slices)))
+            self.save_slices(slices, patient_name, self.leading_modality, main_dir,
+                             min(slice_indices.union(current_utilized_slices)))
             utilized_slices_indices[i].update(slice_indices)
 
         logging.log(logging.INFO, f"The slices selection: COMPLETED\n"
@@ -223,15 +233,116 @@ class TransformVolumesToNumpySlices:
                 min_slices_index, max_slices_index = min(slice_index_range), max(slice_index_range)
                 filepath = modality_paths[modality][index]
                 logging.log(logging.DEBUG, f"File processed {filepath}\nPatient: {patient_name} in process...")
-                slices, _ = smart_load_slices(filepath,
-                                              self.transpose_order,
-                                              self.image_size,
-                                              min_slices_index=min_slices_index,
-                                              max_slices_index=max_slices_index,
-                                              target_zero_ratio=self.target_zero_ratio,
-                                              compute_optimal_slice_range=False)
+                slices, _ = self.smart_load_slices(filepath,
+                                                   min_slices_index=min_slices_index,
+                                                   max_slices_index=max_slices_index,
+                                                   target_zero_ratio=self.target_zero_ratio,
+                                                   compute_optimal_slice_range=False)
 
                 self.save_slices(slices, patient_name, modality, main_dir, min_slices_index)
+
+    def get_indices_mask_slices(self, mask_volume: np.ndarray):
+        # file_extension = os.path.splitext(filepath)[1]
+        # if file_extension == ".npy":
+        #     mask_volume = np.load(filepath)
+        # else:
+        #     raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
+
+        # in case of brain image being in wrong shape
+        # we want (n_slice, img_H, img_W)
+        # it changes from (img_H, img_W, n_slices) to desired length
+        if self.transpose_order is not None:
+            mask_volume = np.transpose(mask_volume, self.transpose_order)
+
+        # retrieving slices where the slice have at least one pixel different from zero
+        having_any_mask = {index for index, mask_slice in enumerate(mask_volume) if np.sum(mask_slice) > 0}
+        return having_any_mask
+
+    def smart_load_slices(self,
+                          filepath: str,
+                          min_slices_index=-1,
+                          max_slices_index=-1,
+                          target_zero_ratio=0.9,
+                          compute_optimal_slice_range=True):
+        # def get_optimal_slice_range(brain_slices):
+        #     pixel_counts = np.unique(img, return_counts=True)
+        #
+        #     # if there is less than 30% of the most frequent pixel there is a risk that the background is not unified
+        #     if pixel_counts[1][0] / img.flatten().shape[0] < 0.3:
+        #         logging.log(logging.WARNING, "The method assumes that all the background pixels have the same value. "
+        #                                      f"In the provided volume {filepath} less than 30% of pixels have the same value.")
+        #     background_color = pixel_counts[0][0]
+        #     zero_ratios = np.array(
+        #         [np.sum(brain_slice == background_color) / (brain_slice.shape[0] * brain_slice.shape[1])
+        #          for brain_slice in brain_slices])
+        #     satisfying_given_ratio = np.where(zero_ratios < target_zero_ratio)[0]
+        #
+        #     return satisfying_given_ratio
+
+        # loading the file
+        file_extension = os.path.splitext(filepath)[1]
+        if file_extension == ".npy":
+            img = np.load(filepath)
+        else:
+            raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
+
+        if max_slices_index > img.shape[-1]:  # img.shape[-1] == total number of slices
+            raise ValueError("max_slices_index > img.shape[-1]")
+
+        # in case of brain image being in wrong shape
+        # we want (n_slice, img_H, img_W)
+        # it changes from (img_H, img_W, n_slices) to desired length
+        if self.transpose_order is not None:
+            img = np.transpose(img, self.transpose_order)
+
+        if self.image_size is not None:
+            img = [trim_image(brain_slice, self.image_size) for brain_slice in img]
+
+        # by default the range is given in the function
+        upper_bounder = max_slices_index
+        lower_bounder = min_slices_index
+
+        if compute_optimal_slice_range:
+            taken_indices = self.get_optimal_slice_range(img, self.target_zero_ratio, slices_id=filepath)
+            if len(taken_indices) == 0:
+                raise ValueError(
+                    "No brain slices with the substantial portion of brain (greater than `target_zero_ratio`), increase this value.")
+            min_substantial_brain = min(taken_indices)
+            max_substantial_brain = max(taken_indices)
+
+            if min_slices_index == -1 or min_substantial_brain < min_slices_index:
+                lower_bounder = min_substantial_brain
+
+            if max_slices_index == -1 or max_substantial_brain > max_slices_index:
+                upper_bounder = max_substantial_brain
+        else:
+            if min_slices_index == -1 or max_slices_index == -1:
+                raise ValueError("The `min_slices_index` and `max_slices_index` have to "
+                                 "be provided in case the `compute_optimal_slice_range` is False")
+
+        logging.log(logging.INFO, f"Slice range used for file {filepath}: <{lower_bounder}, {upper_bounder}>")
+
+        taken_indices = range(lower_bounder, upper_bounder + 1)
+        selected_slices = [img[slice_index] for slice_index in taken_indices]
+
+        return selected_slices, set(taken_indices)
+
+    @staticmethod
+    def get_optimal_slice_range(brain_slices, target_zero_ratio, slices_id=None):
+        if slices_id is None:
+            slices_id = ""
+        pixel_counts = np.unique(brain_slices, return_counts=True)
+
+        # if there is less than 30% of the most frequent pixel there is a risk that the background is not unified
+        if pixel_counts[1][0] / brain_slices.flatten().shape[0] < 0.3:
+            logging.log(logging.WARNING, "The method assumes that all the background pixels have the same value. "
+                                         f"In the provided volume {slices_id} less than 30% of pixels have the same value.")
+        background_color = pixel_counts[0][0]
+        zero_ratios = np.array([np.sum(brain_slice == background_color) / (brain_slice.shape[0] * brain_slice.shape[1])
+                                for brain_slice in brain_slices])
+        satisfying_given_ratio = np.where(zero_ratios < target_zero_ratio)[0]
+
+        return satisfying_given_ratio
 
 
 def trim_image(image, target_image_size: Tuple[int, int]):
@@ -243,89 +354,6 @@ def trim_image(image, target_image_size: Tuple[int, int]):
 
     return image[x_pixels_margin:target_image_size[0] + x_pixels_margin,
            y_pixels_margin:target_image_size[1] + y_pixels_margin]
-
-
-def get_indices_mask_slices(filepath: str, transpose_order):
-    file_extension = os.path.splitext(filepath)[1]
-    if file_extension == ".npy":
-        mask_volume = np.load(filepath)
-    else:
-        raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
-
-    # in case of brain image being in wrong shape
-    # we want (n_slice, img_H, img_W)
-    # it changes from (img_H, img_W, n_slices) to desired length
-    if transpose_order is not None:
-        mask_volume = np.transpose(mask_volume, transpose_order)
-
-    # retrieving slices where the slice have at least one pixel different from zero
-    having_any_mask = {index for index, mask_slice in enumerate(mask_volume) if np.sum(mask_slice) > 0}
-    return having_any_mask
-
-
-def smart_load_slices(filepath: str, transpose_order, image_size: Optional[Tuple[int, int]] = None, min_slices_index=-1,
-                      max_slices_index=-1, target_zero_ratio=0.9, compute_optimal_slice_range=True):
-    def get_optimal_slice_range(brain_slices):
-        pixel_counts = np.unique(img, return_counts=True)
-
-        # if there is less than 30% of the most frequent pixel there is a risk that the background is not unified
-        if pixel_counts[1][0] / img.flatten().shape[0] < 0.3:
-            logging.log(logging.WARNING, "The method assumes that all the background pixels have the same value. "
-                                         f"In the provided volume {filepath} less than 30% of pixels have the same value.")
-        background_color = pixel_counts[0][0]
-        zero_ratios = np.array([np.sum(brain_slice == background_color) / (brain_slice.shape[0] * brain_slice.shape[1])
-                                for brain_slice in brain_slices])
-        satisfying_given_ratio = np.where(zero_ratios < target_zero_ratio)[0]
-
-        return satisfying_given_ratio
-
-    # loading the file
-    file_extension = os.path.splitext(filepath)[1]
-    if file_extension == ".npy":
-        img = np.load(filepath)
-    else:
-        raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
-
-    if max_slices_index > img.shape[-1]:  # img.shape[-1] == total number of slices
-        raise ValueError("max_slices_index > img.shape[-1]")
-
-    # in case of brain image being in wrong shape
-    # we want (n_slice, img_H, img_W)
-    # it changes from (img_H, img_W, n_slices) to desired length
-    if transpose_order is not None:
-        img = np.transpose(img, transpose_order)
-
-    if image_size is not None:
-        img = [trim_image(brain_slice, image_size) for brain_slice in img]
-
-    # by default the range is given in the function
-    upper_bounder = max_slices_index
-    lower_bounder = min_slices_index
-
-    if compute_optimal_slice_range:
-        taken_indices = get_optimal_slice_range(img)
-        if len(taken_indices) == 0:
-            raise ValueError(
-                "No brain slices with the substantial portion of brain (greater than `target_zero_ratio`), increase this value.")
-        min_substantial_brain = min(taken_indices)
-        max_substantial_brain = max(taken_indices)
-
-        if min_slices_index == -1 or min_substantial_brain < min_slices_index:
-            lower_bounder = min_substantial_brain
-
-        if max_slices_index == -1 or max_substantial_brain > max_slices_index:
-            upper_bounder = max_substantial_brain
-    else:
-        if min_slices_index == -1 or max_slices_index == -1:
-            raise ValueError("The `min_slices_index` and `max_slices_index` have to "
-                             "be provided in case the `compute_optimal_slice_range` is False")
-
-    logging.log(logging.INFO, f"Slice range used for file {filepath}: <{lower_bounder}, {upper_bounder}>")
-
-    taken_indices = range(lower_bounder, upper_bounder + 1)
-    selected_slices = [img[slice_index] for slice_index in taken_indices]
-
-    return selected_slices, set(taken_indices)
 
 
 def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, shuffle_local_dirs=False):
@@ -353,7 +381,8 @@ def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, sh
             retrieved_filepaths = sorted(glob(alike_path))
 
             if len(retrieved_filepaths) == 0:  # if not any found the directory is skipped
-                logging.log(logging.WARNING, f"In file {local_dir} there were no alike filepaths ({alike_path}), so the patient is skipped.")
+                logging.log(logging.WARNING,
+                            f"In file {local_dir} there were no alike filepaths ({alike_path}), so the patient is skipped.")
                 # removing last elements for this patient from the already processed modalities
                 for modality_to_remove in filepaths_from_data_dir.keys():
                     # only until the current patients are removed
@@ -383,4 +412,3 @@ def get_youngest_dir(filepath):
     if len(filepath_split) < 2:
         raise ValueError(f"The provided filepath ({filepath}) is only a file name (no path separators)")
     return filepath_split[-2]
-

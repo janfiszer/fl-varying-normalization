@@ -3,7 +3,7 @@ import os
 from glob import glob
 from typing import List, Tuple
 
-from src.utils.files_operations import smart_load_slices, get_nii_filepaths, TransformVolumesToNumpySlices
+from src.utils.files_operations import TransformVolumesToNumpySlices
 
 import numpy as np
 import torch
@@ -115,53 +115,3 @@ class VolumeEvaluation(Dataset):
         target_volume = target_volume > 0  # binarize
 
         return target_volume, predicted_volume
-    
-
-class MRIDatasetNII(Dataset):
-    """
-    A dataset which loads full 3D images .nii images to memory. Might be less efficient and limits some shuffling
-    possibilities which is important in training on smaller datasets.
-    Therefore, often utilized pipeline was:
-    1. TransformNIIDataToNumpySlices to transform the dataset into 2D slices
-    2. Then MRIDatasetNumpySlices used as the torch.Dataset to load the data efficiently
-    """
-    MIN_SLICE_INDEX = 50
-    MAX_SLICE_INDEX = 125
-    STEP = 1
-
-    def __init__(self, data_dir: str, t1_filepath_from_data_dir, t2_filepath_from_data_dir, transform,
-                 image_size=None, transform_order=None, n_patients=1, t1_to_t2=True):
-        self.data_dir = data_dir
-        self.transform = transform
-
-        if t1_to_t2:
-            images_filepaths, targets_filepaths = get_nii_filepaths(data_dir, t1_filepath_from_data_dir,
-                                                                    t2_filepath_from_data_dir, n_patients)
-        else:
-            targets_filepaths, images_filepaths = get_nii_filepaths(data_dir, t1_filepath_from_data_dir,
-                                                                    t2_filepath_from_data_dir, n_patients)
-
-        self.images, self.targets = [], []
-
-        for img_path in images_filepaths:
-            slices, _, _ = smart_load_slices(img_path, transform_order, image_size, self.MIN_SLICE_INDEX,
-                                             self.MAX_SLICE_INDEX)
-            self.images.extend(slices)
-
-        for target_path in targets_filepaths:
-            slices, _, _ = smart_load_slices(target_path, transform_order, image_size, self.MIN_SLICE_INDEX,
-                                             self.MAX_SLICE_INDEX)
-            self.targets.extend(slices)
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, index):
-        image = torch.from_numpy(np.expand_dims(self.images[index], axis=0))
-        target = torch.from_numpy(np.expand_dims(self.targets[index], axis=0))
-
-        if self.transform is not None:
-            image = self.transform(image)
-            target = self.transform(target)
-
-        return image.float(), target.float()
