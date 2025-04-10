@@ -235,7 +235,7 @@ def normalize_all_from_dir(data_dir: str,
     # splitting the datasets into n subsets (n number of normalizers)
     n_normalization = len(normalizers)
     subset_size = len(list(modalities_filepaths.values())[0]) // n_normalization
-    normalizers_with_indices_ranges = {normalizer: (i * subset_size, (i + 1) * subset_size) for i, normalizer in
+    normalizers_with_indices_ranges = {normalizer: (i * subset_size, i * subset_size + 1) for i, normalizer in
                                        enumerate(normalizers)}
 
     logging.log(logging.INFO, f"{n_normalization} normalizers were provided, each of them will have a subset "
