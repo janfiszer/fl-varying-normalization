@@ -316,7 +316,7 @@ def normalize_all_from_dir(data_dir: str,
                     logging_message = f"Mask volume from file '{current_filepath}' saved to '{save_path}'."
 
                 # saving the volume as a 3D numpy array
-                logging.log(logging.INFO, logging_message)
+                logging.log(logging.DEBUG, logging_message)
                 np.save(save_path, normalized_volume)
 
     logging.log(logging.INFO, "Process of normalization and division af the dataset: ENDED")

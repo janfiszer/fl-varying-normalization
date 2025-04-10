@@ -186,7 +186,7 @@ class TransformVolumesToNumpySlices:
             for filepath in modality_paths[self.mask_volume_name]:
                 slice_indices_with_mask = get_indices_mask_slices(filepath, self.transpose_order)
                 utilized_slices_indices.append(slice_indices_with_mask)
-                logging.log(logging. INFO, f"In the directory {get_youngest_dir(filepath)} "
+                logging.log(logging.INFO, f"In the directory {get_youngest_dir(filepath)} "
                                            f"{len(slice_indices_with_mask)} slices with mask they were found")
             num_all_slices_with_mask = sum([len(i_slices) for i_slices in utilized_slices_indices])
             logging.log(logging.INFO, f"Checking the slices with mask: COMPLETED\nIn total there are {num_all_slices_with_mask} slices with mask")
@@ -195,9 +195,9 @@ class TransformVolumesToNumpySlices:
         logging.log(logging.INFO, f"Processing the `leading_modality` ({self.leading_modality})")
         for i, filepath in enumerate(modality_paths[self.leading_modality]):
             patient_name = get_youngest_dir(filepath)
-            logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process...")
+            logging.log(logging.DEBUG, f"File processed {filepath}\nPatient: {patient_name} in process...")
             current_utilized_slices = utilized_slices_indices[i]
-            # TODO: include all with the tumor mask
+
             slices, slice_indices = smart_load_slices(filepath,
                                                       self.transpose_order,
                                                       self.image_size,
@@ -222,7 +222,7 @@ class TransformVolumesToNumpySlices:
                 slice_index_range = utilized_slices_indices[index]
                 min_slices_index, max_slices_index = min(slice_index_range), max(slice_index_range)
                 filepath = modality_paths[modality][index]
-                logging.log(logging.INFO, f"File processed {filepath}\nPatient: {patient_name} in process...")
+                logging.log(logging.DEBUG, f"File processed {filepath}\nPatient: {patient_name} in process...")
                 slices, _ = smart_load_slices(filepath,
                                               self.transpose_order,
                                               self.image_size,
