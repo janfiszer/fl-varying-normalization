@@ -22,18 +22,17 @@ if __name__ == '__main__':
 
     dataloader = DataLoader(dataset, batch_size=8, shuffle=False)
 
-    first_iteration = True
     for i, (images, targets) in enumerate(dataloader):
         for image, target in zip(images, targets):
-            if first_iteration:
+            # getting the shapes in the first itteration
+            if i == 0:
                 image_shape = image.shape
                 target_shape = target.shape
-                first_iteration = False
             else:
                 if image.shape != image_shape:
-                    logging.log(logging.WARNING, f"The shapes are different", image_shape, "!=", image.shape)
+                    logging.log(logging.ERROR, f"The shapes are different", image_shape, "!=", image.shape)
                 elif target.shape != target_shape:
-                    logging.log(logging.WARNING, f"The shapes are different", target_shape, "!=", target.shape)
+                    logging.log(logging.ERROR, f"The shapes are different", target_shape, "!=", target.shape)
                 else:
                     logging.log(logging.DEBUG, "The shapes are matching.")
         plot_all_modalities_and_target(images, targets, column_names=config.USED_MODALITIES + [config.MASK_DIR], rotate_deg=270, savepath=path.join(visualization_path, f"batch{i}_dataset_test.jpg"))

@@ -12,7 +12,7 @@ from src.utils.files_operations import (
     TransformVolumesToNumpySlices,
     trim_image,
     get_indices_mask_slices,
-    load_nii_slices,
+    smart_load_slices,
     get_nii_filepaths,
     get_youngest_dir
 )
@@ -114,10 +114,10 @@ class TestLoadNIISlices(unittest.TestCase):
         mock_np_load.return_value = mock_volume
 
         # Test with specified slice range
-        slices, indices = load_nii_slices("test.npy", transpose_order=None,
-                                          image_size=None, min_slices_index=2,
-                                          max_slices_index=5, target_zero_ratio=0.9,
-                                          compute_optimal_slice_range=False)
+        slices, indices = smart_load_slices("test.npy", transpose_order=None,
+                                            image_size=None, min_slices_index=2,
+                                            max_slices_index=5, target_zero_ratio=0.9,
+                                            compute_optimal_slice_range=False)
 
         # Check results
         self.assertEqual(len(slices), 4)  # slices 2, 3, 4, 5
@@ -146,9 +146,9 @@ class TestLoadNIISlices(unittest.TestCase):
         mock_nib_load.return_value = mock_nib
 
         # Test with auto slice range (min_slice_index=-1, max_slices_index=-1)
-        slices, indices = load_nii_slices("test.nii", transpose_order=None,
-                                          image_size=None, min_slices_index=-1,
-                                          max_slices_index=-1, target_zero_ratio=0.9)
+        slices, indices = smart_load_slices("test.nii", transpose_order=None,
+                                            image_size=None, min_slices_index=-1,
+                                            max_slices_index=-1, target_zero_ratio=0.9)
 
         # Check results - should only return slices with less than 90% background
         self.assertEqual(len(slices), 3)  # slices 3, 4, 5
