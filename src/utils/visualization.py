@@ -72,7 +72,7 @@ def plot_all_modalities_and_target(
             if rotate_deg != 0:
                 img_np = np.rot90(img_np, k=rotate_deg // 90)
 
-            ax.imshow(img_np, cmap=cmap, v_max=v_max)
+            ax.imshow(img_np, cmap=cmap, vmax=v_max)
             ax.axis('off')
 
             # Add column titles
