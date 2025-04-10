@@ -4,8 +4,6 @@ from configs import config
 from src.utils import data_normalization
 
 if __name__ == '__main__':
-    logging.getLogger().setLevel(logging.INFO)
-    # test_every_normalizer()
     if config.LOCAL:
         n_patients = -1
         # data_dir = "C:\\Users\\JanFiszer\\data\\mri\\flair_volumes"

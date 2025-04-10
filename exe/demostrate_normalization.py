@@ -3,7 +3,6 @@ import configs.config
 from src.utils import data_normalization
 
 if __name__ == '__main__':
-    logging.getLogger().setLevel(logging.INFO)
     if configs.config.LOCAL:
         data_dir = "C:\\Users\\JanFiszer\\data\\mri\\UCSF-PDGM"
         output_dir = "C:\\Users\\JanFiszer\\data\\mri\\nomralized-UCSF-PDGM"

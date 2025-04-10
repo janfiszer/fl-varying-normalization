@@ -4,8 +4,6 @@ from src.utils.files_operations import TransformVolumesToNumpySlices
 from configs import config
 
 if __name__ == '__main__':
-    logging.getLogger().setLevel(logging.INFO)
-
     if config.LOCAL:
         target_root_dir = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test"
         current_data_dir = "C:\\Users\\JanFiszer\\data\\mri\\nomralized-UCSF-PDGM\\whitestripe"
