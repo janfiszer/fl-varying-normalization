@@ -25,7 +25,7 @@ mse = nn.MSELoss()
 dice_generalized = metrics.generalized_dice
 dice_2_class = metrics.dice_2_class
 # dice_score = Dice().to(device)
-best_dice = metrics.GeneralizedDiceScore(2).to(device)
+generalized_dice_torchmetrics = metrics.GeneralizedDiceScore(2).to(device)
 # dice_score = Dice().to(device)
 jaccard_index = BinaryJaccardIndex().to(device)
 
@@ -47,7 +47,7 @@ class UNet(nn.Module):
 
         self.available_metrics = {"loss": self.criterion,
                                   "mse": mse,
-                                  "best_dice": best_dice,
+                                  "generalized_dice_torchmetrics": generalized_dice_torchmetrics,
                                   # "dice_classification": dice_score,
                                   "dice_generalized": dice_generalized,
                                   "dice_2_class": dice_2_class,
@@ -113,7 +113,7 @@ class UNet(nn.Module):
         n_train_steps = 0
 
         if n_batches < config.BATCH_PRINT_FREQ:
-            batch_print_frequency = n_batches - 2  # tbh not sure if this -2 is needed
+            batch_print_frequency = n_batches
         else:
             batch_print_frequency = config.BATCH_PRINT_FREQ
 
@@ -264,14 +264,17 @@ class UNet(nn.Module):
                  save_preds_dir=None,
                  plot_metrics_distribution=False,
                  plot_every_batch_with_metrics=False,
+                 epoch_number=None
                  # high_mse_value=float('inf')
                  ):
-        logging.info(f"\t\tON DEVICE: {device} \n\t\t\t\tWITH LOSS: {self.criterion}\n")
-
         if not isinstance(self.criterion, Callable):
             raise TypeError(f"Loss function (criterion) has to be callable. It is {type(self.criterion)} which is not.")
         if compute_std and testloader.batch_size != 1:
             raise ValueError("The computations will result in wrong results! Batch size should be 1 if `compute_std=True`.")
+        if epoch_number is None:
+            epoch_number = ""
+
+        logging.info(f"\t\tON DEVICE: {device} \n\t\t\t\tWITH LOSS: {self.criterion}\n")
 
         n_steps = 0
         n_skipped = 0
@@ -325,7 +328,7 @@ class UNet(nn.Module):
                     if testloader.batch_size == 1:
                         if plots_path:
                             # if isinstance(metric_obj, metrics.GeneralizedDiceLoss) and metric_value.item() > high_mse_value:
-                            batches_with_metrics_dirpath = path.join(plots_path, "batches_with_metrics")
+                            batches_with_metrics_dirpath = path.join(plots_path, f"batches_with_metrics_ep{epoch_number}")
                             Path(batches_with_metrics_dirpath).mkdir(exist_ok=True)
                             filepath = path.join(batches_with_metrics_dirpath, f"slice{batch_index}_{metric_name}{metric_value:.2f}.jpg")
 

@@ -29,17 +29,18 @@ def metrics_to_str(metrics: Dict[str, List[float]], starting_symbol="", sep="\t"
 
 
 class GeneralizedDiceLoss(torch.nn.Module):
-    def __init__(self, num_classes, binary_crossentropy=False):
+    def __init__(self, num_classes, device, binary_crossentropy=False):
         super(GeneralizedDiceLoss, self).__init__()
-        self.dice = GeneralizedDiceScore(num_classes, per_class=True)
+        self.dice = GeneralizedDiceScore(num_classes, per_class=True).to()
         self.binary_crossentropy = binary_crossentropy
 
         if binary_crossentropy:
-            self.bce_loss = torch.nn.BCELoss().to(config.DEVICE)
+            self.bce_loss = torch.nn.BCELoss().to()
 
     def forward(self, predict, target):
         assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
 
+        # TODO: dice=0 when no target ALWAYS...
         dice_scores = self.dice(predict, target)
         loss = 1 - dice_scores.mean()
 
@@ -74,14 +75,14 @@ class BinaryDiceLoss(torch.nn.Module):
         Exception if unexpected reduction
     """
 
-    def __init__(self, smooth=1, p=2, binary_crossentropy=False):
+    def __init__(self, device, smooth=1, p=2, binary_crossentropy=False):
         super(BinaryDiceLoss, self).__init__()
         self.smooth = smooth
         self.p = p
         self.binary_crossentropy = binary_crossentropy
 
         if binary_crossentropy:
-            self.bce_loss = torch.nn.BCELoss().to(config.DEVICE)
+            self.bce_loss = torch.nn.BCELoss().to(device)
 
     def forward(self, predict, target):
         assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
@@ -139,7 +140,6 @@ def weighted_BCE(predict, target):
 
 
 def loss_generalized_dice(predict, target):
-
     num_samples_0 = (target == 0).sum().item()
     num_samples_1 = (target == 1).sum().item()
 
@@ -220,9 +220,9 @@ class LossDice2Class(torch.nn.Module):
     def __repr__(self):
         return "Domi LOSS"
 
-# def loss_dice_2_class(predict, target):
-#     dice = dice_2_class(predict, target)
-#     return 1 - dice
+def loss_dice_2_class(predict, target):
+    dice = dice_2_class(predict, target)
+    return 1 - dice
 
 
 class DomiBinaryDiceLoss(torch.nn.Module):
