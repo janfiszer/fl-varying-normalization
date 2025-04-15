@@ -171,7 +171,7 @@ class TransformVolumesToNumpySlices:
         logging.log(logging.INFO, f"Creating {main_dir}, which will have data from {n_samples} patients")
 
         # in the `main_dir` create a directory for each patient and slice
-        # with corresponding modalities such that the directory structre is
+        # with corresponding modalities such that the directory structure is
         # │ `mian_dir`
         # │   ├── patient_name_slice e.g. UCSF_001_slice58
         # │   │   ├── network input modalities e.g.
@@ -186,18 +186,27 @@ class TransformVolumesToNumpySlices:
         if self.mask_volume_name:
             logging.log(logging.INFO, f"`PROVIDED: mask_volume_name={self.mask_volume_name}`\n"
                                       f"Taking all the slices from this key in the provided `modality_paths`")
-            for filepath in modality_paths[self.mask_volume_name]:
-                mask_volume = np.load(filepath)
-                # TODO: here there is an error!! to little slices for 95% tolerance...
-                slice_indices_with_minimum_brain_for_mask = self.get_optimal_slice_range(mask_volume,
+            for filepath_index in range(n_samples):
+                # loading the currently processed volume from the `self.leading_modality`
+                volume_filepath = modality_paths[self.leading_modality][filepath_index]
+                volume = self.load_slice(volume_filepath)
+                # finding the slices with zero ratio (percentage) below `self.max_zero_ratio_on_slice_with_tumor`
+                slice_indices_with_minimum_brain_for_mask = self.get_optimal_slice_range(volume,
                                                                                          self.max_zero_ratio_on_slice_with_tumor,
-                                                                                         slices_id=filepath)
+                                                                                         slices_id=volume_filepath)
+
+                # loading the mask volume
+                mask_volume_filepath = modality_paths[self.mask_volume_name][filepath_index]
+                mask_volume = self.load_slice(mask_volume_filepath)
+                # finding the slices with mask volume
                 slice_indices_with_mask = self.get_indices_mask_slices(mask_volume)
 
+                # taking intersection of the two sets
                 slices_indices_intersection = slice_indices_with_minimum_brain_for_mask.intersection(slice_indices_with_mask)
                 utilized_slices_indices.append(slices_indices_intersection)
-                logging.log(logging.INFO, f"In the directory {get_youngest_dir(filepath)} "
+                logging.log(logging.INFO, f"In the directory {get_youngest_dir(mask_volume_filepath)} "
                                           f"{len(slices_indices_intersection)} slices with mask they were found")
+
             num_all_slices_with_mask = sum([len(i_slices) for i_slices in utilized_slices_indices])
             logging.log(logging.INFO,
                         f"Checking the slices with mask: COMPLETED\nIn total there are {num_all_slices_with_mask} slices with mask")
@@ -218,12 +227,16 @@ class TransformVolumesToNumpySlices:
                              min(slice_indices.union(current_utilized_slices)))
             utilized_slices_indices[i].update(slice_indices)
 
-        logging.log(logging.INFO, f"The slices selection: COMPLETED\n"
+        logging.info(f"The slices selection: COMPLETED\n"
                                   f"In total there are {sum([len(i_slices) for i_slices in utilized_slices_indices])} slices")
 
+        # processing remaining modalities
+        remaining_modalities = list(modality_paths.keys())
+        remaining_modalities.remove(self.leading_modality)
+        logging.info(f"Processing all the other modalities: {remaining_modalities}")
         # having the `utilized_slices_range`
         for index in range(n_samples):
-            for modality in modality_paths.keys():
+            for modality in remaining_modalities:
                 patient_name = get_youngest_dir(modality_paths[modality][index])
                 # the leading modality was already processed
                 if modality == self.leading_modality:
@@ -240,23 +253,6 @@ class TransformVolumesToNumpySlices:
                                                    compute_optimal_slice_range=False)
 
                 self.save_slices(slices, patient_name, modality, main_dir, min_slices_index)
-
-    def get_indices_mask_slices(self, mask_volume: np.ndarray):
-        # file_extension = os.path.splitext(filepath)[1]
-        # if file_extension == ".npy":
-        #     mask_volume = np.load(filepath)
-        # else:
-        #     raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
-
-        # in case of brain image being in wrong shape
-        # we want (n_slice, img_H, img_W)
-        # it changes from (img_H, img_W, n_slices) to desired length
-        if self.transpose_order is not None:
-            mask_volume = np.transpose(mask_volume, self.transpose_order)
-
-        # retrieving slices where the slice have at least one pixel different from zero
-        having_any_mask = {index for index, mask_slice in enumerate(mask_volume) if np.sum(mask_slice) > 0}
-        return having_any_mask
 
     def smart_load_slices(self,
                           filepath: str,
@@ -282,7 +278,7 @@ class TransformVolumesToNumpySlices:
         # loading the file
         file_extension = os.path.splitext(filepath)[1]
         if file_extension == ".npy":
-            img = np.load(filepath)
+            img = self.load_slice(filepath)
         else:
             raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
 
@@ -292,9 +288,6 @@ class TransformVolumesToNumpySlices:
         # in case of brain image being in wrong shape
         # we want (n_slice, img_H, img_W)
         # it changes from (img_H, img_W, n_slices) to desired length
-        if self.transpose_order is not None:
-            img = np.transpose(img, self.transpose_order)
-
         if self.image_size is not None:
             img = [trim_image(brain_slice, self.image_size) for brain_slice in img]
 
@@ -327,10 +320,30 @@ class TransformVolumesToNumpySlices:
 
         return selected_slices, set(taken_indices)
 
+    def load_slice(self, filepath):
+        # loading the file
+        file_extension = os.path.splitext(filepath)[1]
+        if file_extension == ".npy":
+            img = np.load(filepath)
+        else:
+            raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
+
+        # in case of brain image being in wrong shape
+        # we want (n_slice, img_H, img_W)
+        # it changes from (img_H, img_W, n_slices) to desired length
+        if self.transpose_order is not None:
+            img = np.transpose(img, self.transpose_order)
+
+        else:
+            logging.warning(f"self.transpose_order not provided, usually the MRI volumes are in a flipped form. "
+                            f"Desired is: (n_slice, img_H, img_W)")
+        return img
+
     @staticmethod
     def get_optimal_slice_range(brain_slices, target_zero_ratio, slices_id=None):
         if slices_id is None:
             slices_id = ""
+
         pixel_counts = np.unique(brain_slices, return_counts=True)
 
         # if there is less than 30% of the most frequent pixel there is a risk that the background is not unified
@@ -342,7 +355,13 @@ class TransformVolumesToNumpySlices:
                                 for brain_slice in brain_slices])
         satisfying_given_ratio = np.where(zero_ratios < target_zero_ratio)[0]
 
-        return satisfying_given_ratio
+        return set(satisfying_given_ratio)
+
+    @staticmethod
+    def get_indices_mask_slices(mask_volume: np.ndarray):
+        # retrieving slices where the slice have at least one pixel different from zero
+        having_any_mask = {index for index, mask_slice in enumerate(mask_volume) if np.sum(mask_slice) > 0}
+        return having_any_mask
 
 
 def trim_image(image, target_image_size: Tuple[int, int]):
