@@ -21,6 +21,10 @@ if __name__ == '__main__':
         train_directory = [os.path.join(data_dir, "train")]
         validation_directory = [os.path.join(data_dir, "validation")]
         representative_test_dir = train_directory[0].split(os.path.sep)[-2]
+        if len(sys.argv) > 2:
+            num_epochs = int(sys.argv[2])
+        else:
+            num_epochs = config.N_EPOCHS_CENTRALIZED
 
     train_dataset = SegmentationDataset2DSlices(train_directory, config.USED_MODALITIES, config.MASK_DIR, binarize_mask=True)
     validation_dataset = SegmentationDataset2DSlices(validation_directory, config.USED_MODALITIES, config.MASK_DIR, binarize_mask=True)
@@ -70,7 +74,7 @@ if __name__ == '__main__':
     else:
         unet.perform_train(trainloader, optimizer,
                            validationloader=valloader,
-                           epochs=config.N_EPOCHS_CENTRALIZED,
+                           epochs=num_epochs,
                            model_save_filename="last_epoch_model.pth",
                            model_dir=model_dir,
                            history_filename="history.pkl",
