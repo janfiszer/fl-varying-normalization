@@ -90,8 +90,7 @@ class TransformVolumesToNumpySlices:
         Path(self.target_root_dir).mkdir(exist_ok=False)
         # creating inner directories
         # in each of the returned lists (train, test, val)
-        # patients_names = os.listdir(self.origin_data_dir)
-        self.create_empty_dirs(self.origin_data_dir, self.DIVISION_SETS)
+        self.create_empty_dirs(self.target_root_dir, self.DIVISION_SETS)
 
         # loading the data
         modalities_filepaths = get_nii_filepaths(self.origin_data_dir,
