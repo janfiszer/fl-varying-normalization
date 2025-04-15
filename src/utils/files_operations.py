@@ -220,8 +220,7 @@ class TransformVolumesToNumpySlices:
 
             slices, slice_indices = self.smart_load_slices(filepath,
                                                            min_slices_index=min(current_utilized_slices),
-                                                           max_slices_index=max(current_utilized_slices),
-                                                           target_zero_ratio=self.target_zero_ratio)
+                                                           max_slices_index=max(current_utilized_slices))
 
             self.save_slices(slices, patient_name, self.leading_modality, main_dir,
                              min(slice_indices.union(current_utilized_slices)))
@@ -249,7 +248,6 @@ class TransformVolumesToNumpySlices:
                 slices, _ = self.smart_load_slices(filepath,
                                                    min_slices_index=min_slices_index,
                                                    max_slices_index=max_slices_index,
-                                                   target_zero_ratio=self.target_zero_ratio,
                                                    compute_optimal_slice_range=False)
 
                 self.save_slices(slices, patient_name, modality, main_dir, min_slices_index)
@@ -258,29 +256,8 @@ class TransformVolumesToNumpySlices:
                           filepath: str,
                           min_slices_index=-1,
                           max_slices_index=-1,
-                          target_zero_ratio=0.9,
                           compute_optimal_slice_range=True):
-        # def get_optimal_slice_range(brain_slices):
-        #     pixel_counts = np.unique(img, return_counts=True)
-        #
-        #     # if there is less than 30% of the most frequent pixel there is a risk that the background is not unified
-        #     if pixel_counts[1][0] / img.flatten().shape[0] < 0.3:
-        #         logging.log(logging.WARNING, "The method assumes that all the background pixels have the same value. "
-        #                                      f"In the provided volume {filepath} less than 30% of pixels have the same value.")
-        #     background_color = pixel_counts[0][0]
-        #     zero_ratios = np.array(
-        #         [np.sum(brain_slice == background_color) / (brain_slice.shape[0] * brain_slice.shape[1])
-        #          for brain_slice in brain_slices])
-        #     satisfying_given_ratio = np.where(zero_ratios < target_zero_ratio)[0]
-        #
-        #     return satisfying_given_ratio
-
-        # loading the file
-        file_extension = os.path.splitext(filepath)[1]
-        if file_extension == ".npy":
-            img = self.load_slice(filepath)
-        else:
-            raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
+        img = self.load_slice(filepath)
 
         if max_slices_index > img.shape[-1]:  # img.shape[-1] == total number of slices
             raise ValueError("max_slices_index > img.shape[-1]")
