@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 if __name__ == '__main__':
     if config.LOCAL:
-        data_dir_ares = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\validation"
+        data_dir_ares = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_max_zero_ratio_mask_test\\train"
     else:
         data_dir_ares = sys.argv[1]
     visualization_dir = "batches_visualization"

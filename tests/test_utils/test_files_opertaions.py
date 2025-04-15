@@ -11,8 +11,6 @@ from pathlib import Path
 from src.utils.files_operations import (
     TransformVolumesToNumpySlices,
     trim_image,
-    get_indices_mask_slices,
-    smart_load_slices,
     get_nii_filepaths,
     get_youngest_dir
 )
@@ -39,120 +37,120 @@ class TestTrimImage(unittest.TestCase):
             trim_image(image, target_size)
 
 
-class TestGetIndicesMaskSlices(unittest.TestCase):
-    @patch('numpy.load')
-    @patch('nibabel.load')
-    def test_npy_file(self, mock_nib_load, mock_np_load):
-        # Setup mock data
-        mock_volume = np.zeros((10, 20, 20))
-        # Add some non-zero values in specific slices
-        mock_volume[3] = np.ones((20, 20))
-        mock_volume[7] = np.ones((20, 20))
+# class TestGetIndicesMaskSlices(unittest.TestCase):
+#     @patch('numpy.load')
+#     @patch('nibabel.load')
+#     def test_npy_file(self, mock_nib_load, mock_np_load):
+#         # Setup mock data
+#         mock_volume = np.zeros((10, 20, 20))
+#         # Add some non-zero values in specific slices
+#         mock_volume[3] = np.ones((20, 20))
+#         mock_volume[7] = np.ones((20, 20))
+#
+#         mock_np_load.return_value = mock_volume
+#
+#         # Test with .npy file
+#         indices = get_indices_mask_slices("test.npy", transpose_order=None)
+#
+#         # Expected indices where the mask has non-zero values
+#         expected_indices = {3, 7}
+#         self.assertEqual(indices, expected_indices)
+#         mock_np_load.assert_called_once()
+#
+#     @patch('numpy.load')
+#     @patch('nibabel.load')
+#     def test_nii_file(self, mock_nib_load, mock_np_load):
+#         # Setup mock data
+#         mock_volume = np.zeros((10, 20, 20))
+#         # Add some non-zero values in specific slices
+#         mock_volume[3] = np.ones((20, 20))
+#         mock_volume[7] = np.ones((20, 20))
+#
+#         # For nib.load, we need to simulate the get_fdata method
+#         mock_nib = MagicMock()
+#         mock_nib.get_fdata.return_value = mock_volume
+#         mock_nib_load.return_value = mock_nib
+#
+#         # Test with .nii file
+#         indices = get_indices_mask_slices("test.nii", transpose_order=None)
+#
+#         # Expected indices where the mask has non-zero values
+#         expected_indices = {3, 7}
+#         self.assertEqual(indices, expected_indices)
+#         mock_nib_load.assert_called_once()
+#
+#     def test_unsupported_file_extension(self):
+#         with self.assertRaises(ValueError):
+#             get_indices_mask_slices("test.txt", transpose_order=None)
+#
+#     @patch('numpy.load')
+#     def test_with_transpose(self, mock_np_load):
+#         # Setup mock data - assume original shape is (20, 20, 10)
+#         mock_volume = np.zeros((20, 20, 10))
+#         # Add some non-zero values
+#         mock_volume[:, :, 2] = 1  # This should become slice index 2 after transpose
+#         mock_volume[:, :, 5] = 1  # This should become slice index 5 after transpose
+#
+#         mock_np_load.return_value = mock_volume
+#
+#         # Test with transpose to (2, 0, 1) to get (10, 20, 20)
+#         indices = get_indices_mask_slices("test.npy", transpose_order=(2, 0, 1))
+#
+#         # Expected indices where the mask has non-zero values
+#         expected_indices = {2, 5}
+#         self.assertEqual(indices, expected_indices)
 
-        mock_np_load.return_value = mock_volume
 
-        # Test with .npy file
-        indices = get_indices_mask_slices("test.npy", transpose_order=None)
-
-        # Expected indices where the mask has non-zero values
-        expected_indices = {3, 7}
-        self.assertEqual(indices, expected_indices)
-        mock_np_load.assert_called_once()
-
-    @patch('numpy.load')
-    @patch('nibabel.load')
-    def test_nii_file(self, mock_nib_load, mock_np_load):
-        # Setup mock data
-        mock_volume = np.zeros((10, 20, 20))
-        # Add some non-zero values in specific slices
-        mock_volume[3] = np.ones((20, 20))
-        mock_volume[7] = np.ones((20, 20))
-
-        # For nib.load, we need to simulate the get_fdata method
-        mock_nib = MagicMock()
-        mock_nib.get_fdata.return_value = mock_volume
-        mock_nib_load.return_value = mock_nib
-
-        # Test with .nii file
-        indices = get_indices_mask_slices("test.nii", transpose_order=None)
-
-        # Expected indices where the mask has non-zero values
-        expected_indices = {3, 7}
-        self.assertEqual(indices, expected_indices)
-        mock_nib_load.assert_called_once()
-
-    def test_unsupported_file_extension(self):
-        with self.assertRaises(ValueError):
-            get_indices_mask_slices("test.txt", transpose_order=None)
-
-    @patch('numpy.load')
-    def test_with_transpose(self, mock_np_load):
-        # Setup mock data - assume original shape is (20, 20, 10)
-        mock_volume = np.zeros((20, 20, 10))
-        # Add some non-zero values
-        mock_volume[:, :, 2] = 1  # This should become slice index 2 after transpose
-        mock_volume[:, :, 5] = 1  # This should become slice index 5 after transpose
-
-        mock_np_load.return_value = mock_volume
-
-        # Test with transpose to (2, 0, 1) to get (10, 20, 20)
-        indices = get_indices_mask_slices("test.npy", transpose_order=(2, 0, 1))
-
-        # Expected indices where the mask has non-zero values
-        expected_indices = {2, 5}
-        self.assertEqual(indices, expected_indices)
-
-
-class TestLoadNIISlices(unittest.TestCase):
-    @patch('numpy.load')
-    def test_load_npy_with_specified_range(self, mock_np_load):
-        # Create mock volume with slices
-        mock_volume = np.zeros((10, 20, 20))
-        for i in range(10):
-            mock_volume[i] = np.ones((20, 20)) * i
-
-        mock_np_load.return_value = mock_volume
-
-        # Test with specified slice range
-        slices, indices = smart_load_slices("test.npy", transpose_order=None,
-                                            image_size=None, min_slices_index=2,
-                                            max_slices_index=5, target_zero_ratio=0.9,
-                                            compute_optimal_slice_range=False)
-
-        # Check results
-        self.assertEqual(len(slices), 4)  # slices 2, 3, 4, 5
-        self.assertEqual(list(indices), [2, 3, 4, 5])
-
-        # Check slice values
-        for i, slice_data in enumerate(slices):
-            self.assertTrue(np.array_equal(slice_data, np.ones((20, 20)) * (i + 2)))
-
-    @patch('nibabel.load')
-    def test_load_nii_with_auto_range(self, mock_nib_load):
-        # Create mock volume
-        mock_volume = np.zeros((10, 20, 20))
-        # Set background to 0 (most common value)
-        # Make some slices have less than target_zero_ratio of background
-        for i in [3, 4, 5]:
-            # For these slices, set 80% of pixels to non-zero (leaving 20% as background)
-            slice_data = np.ones((20, 20))
-            # Keep some zeros as background (less than 90% which is target_zero_ratio)
-            slice_data[:4, :5] = 0  # 20% of pixels remain as background
-            mock_volume[i] = slice_data
-
-        # Setup mock nib.load
-        mock_nib = MagicMock()
-        mock_nib.get_fdata.return_value = mock_volume
-        mock_nib_load.return_value = mock_nib
-
-        # Test with auto slice range (min_slice_index=-1, max_slices_index=-1)
-        slices, indices = smart_load_slices("test.nii", transpose_order=None,
-                                            image_size=None, min_slices_index=-1,
-                                            max_slices_index=-1, target_zero_ratio=0.9)
-
-        # Check results - should only return slices with less than 90% background
-        self.assertEqual(len(slices), 3)  # slices 3, 4, 5
-        self.assertEqual(set(indices), {3, 4, 5})
+# class TestLoadNIISlices(unittest.TestCase):
+#     @patch('numpy.load')
+#     def test_load_npy_with_specified_range(self, mock_np_load):
+#         # Create mock volume with slices
+#         mock_volume = np.zeros((10, 20, 20))
+#         for i in range(10):
+#             mock_volume[i] = np.ones((20, 20)) * i
+#
+#         mock_np_load.return_value = mock_volume
+#
+#         # Test with specified slice range
+#         slices, indices = smart_load_slices("test.npy", transpose_order=None,
+#                                             image_size=None, min_slices_index=2,
+#                                             max_slices_index=5, target_zero_ratio=0.9,
+#                                             compute_optimal_slice_range=False)
+#
+#         # Check results
+#         self.assertEqual(len(slices), 4)  # slices 2, 3, 4, 5
+#         self.assertEqual(list(indices), [2, 3, 4, 5])
+#
+#         # Check slice values
+#         for i, slice_data in enumerate(slices):
+#             self.assertTrue(np.array_equal(slice_data, np.ones((20, 20)) * (i + 2)))
+#
+#     @patch('nibabel.load')
+#     def test_load_nii_with_auto_range(self, mock_nib_load):
+#         # Create mock volume
+#         mock_volume = np.zeros((10, 20, 20))
+#         # Set background to 0 (most common value)
+#         # Make some slices have less than target_zero_ratio of background
+#         for i in [3, 4, 5]:
+#             # For these slices, set 80% of pixels to non-zero (leaving 20% as background)
+#             slice_data = np.ones((20, 20))
+#             # Keep some zeros as background (less than 90% which is target_zero_ratio)
+#             slice_data[:4, :5] = 0  # 20% of pixels remain as background
+#             mock_volume[i] = slice_data
+#
+#         # Setup mock nib.load
+#         mock_nib = MagicMock()
+#         mock_nib.get_fdata.return_value = mock_volume
+#         mock_nib_load.return_value = mock_nib
+#
+#         # Test with auto slice range (min_slice_index=-1, max_slices_index=-1)
+#         slices, indices = smart_load_slices("test.nii", transpose_order=None,
+#                                             image_size=None, min_slices_index=-1,
+#                                             max_slices_index=-1, target_zero_ratio=0.9)
+#
+#         # Check results - should only return slices with less than 90% background
+#         self.assertEqual(len(slices), 3)  # slices 3, 4, 5
+#         self.assertEqual(set(indices), {3, 4, 5})
 
 
 class TestGetNIIFilepaths(unittest.TestCase):
@@ -246,140 +244,148 @@ class TestGetYoungestDir(unittest.TestCase):
         self.assertEqual(get_youngest_dir('\\complicated\\path\\with\\patient4\\nested\\file.nii'), 'nested')
 
 
-class TestTransformNIIDataToNumpySlices(unittest.TestCase):
+class TestTransformVolumesToNumpySlices(unittest.TestCase):
     def setUp(self):
-        # Create temporary directories for testing
-        self.origin_dir = tempfile.mkdtemp()
-        self.target_dir = tempfile.mkdtemp()
-
-        # Create necessary subdirectories
-        os.makedirs(os.path.join(self.origin_dir, 'patient1'))
-        os.makedirs(os.path.join(self.origin_dir, 'patient2'))
-
-        # Setup basic parameters for the transformer
+        """Set up test fixtures before each test method."""
         self.transformer = TransformVolumesToNumpySlices(
-            target_root_dir=self.target_dir,
-            origin_data_dir=self.origin_dir,
+            target_root_dir="test_target",
+            origin_data_dir="test_origin",
             transpose_order=(2, 0, 1),
-            mask_volume_filename='mask',
-            leading_modality='t1',
+            target_zero_ratio=0.9
         )
 
-    def tearDown(self):
-        # Clean up temporary directories
-        shutil.rmtree(self.origin_dir)
-        shutil.rmtree(self.target_dir)
+        # Sample 3D volume with background (0) and foreground (1)
+        # Shape: (5, 10, 10) - 5 slices, each 10x10
+        self.sample_volume = np.zeros((5, 10, 10))
 
-    def test_create_empty_dirs(self):
-        # Test directory creation
-        test_dir = tempfile.mkdtemp()
-        try:
-            dir_names = ['dir1', 'dir2', 'dir3']
-            TransformVolumesToNumpySlices.create_empty_dirs(test_dir, dir_names)
+        # Slice 0: Empty (all zeros)
+        # Slice 1: 15% foreground (85% background)
+        self.sample_volume[1, :3, :5] = 1
+        # Slice 2: 30% foreground (70% background)
+        self.sample_volume[2, :3, :] = 1
+        # Slice 3: 5% foreground (95% background)
+        self.sample_volume[3, :1, :5] = 1
+        # Slice 4: Empty (all zeros)
 
-            # Check if directories were created
-            for dirname in dir_names:
-                dir_path = os.path.join(test_dir, dirname)
-                self.assertTrue(os.path.exists(dir_path))
-                self.assertTrue(os.path.isdir(dir_path))
-        finally:
-            shutil.rmtree(test_dir)
+        # Sample mask volume with same shape
+        self.sample_mask = np.zeros((5, 10, 10))
+        # Only slices 1 and 2 have mask values
+        self.sample_mask[1, 1:3, 1:3] = 1
+        self.sample_mask[2, 2:4, 2:4] = 1
 
-    @patch('src.utils.files_operations.get_nii_filepaths')
-    @patch('src.utils.files_operations.TransformNIIDataToNumpySlices.create_set')
-    def test_create_train_val_test_sets(self, mock_create_set, mock_get_filepaths):
-        # Mock data
-        mock_filepaths = {
-            't1': ['path/to/patient1/t1.nii', 'path/to/patient2/t1.nii',
-                   'path/to/patient3/t1.nii', 'path/to/patient4/t1.nii'],
-            't2': ['path/to/patient1/t2.nii', 'path/to/patient2/t2.nii',
-                   'path/to/patient3/t2.nii', 'path/to/patient4/t2.nii']
-        }
-        mock_get_filepaths.return_value = mock_filepaths
+    def test_get_optimal_slice_range(self):
+        """Test get_optimal_slice_range with different target ratios"""
+        # Test with target ratio 0.9 (should return slices with less than 90% background)
+        expected_slices = {1, 2}  # Slices 1 and 2 have less than 90% background
+        result = self.transformer.get_optimal_slice_range(self.sample_volume, 0.9)
+        self.assertEqual(result, expected_slices)
 
-        # Create a fresh target directory
-        shutil.rmtree(self.target_dir)
+        # Test with target ratio 0.8 (should return only slice 2)
+        expected_slices = {2}  # Only slice 2 has less than 80% background
+        result = self.transformer.get_optimal_slice_range(self.sample_volume, 0.8)
+        self.assertEqual(result, expected_slices)
 
-        # Call the method
-        self.transformer.create_train_val_test_sets(
-            paths_from_local_dirs={'t1': 't1.nii', 't2': 't2.nii'},
-            train_size=0.5,
-            validation_size=0.25
-        )
+        # Test with target ratio 1.0 (should return all slices with any foreground)
+        expected_slices = {1, 2, 3}  # Slices 1, 2, and 3 have some foreground
+        result = self.transformer.get_optimal_slice_range(self.sample_volume, 1.0)
+        self.assertEqual(result, expected_slices)
 
-        # Check that create_set was called for each set type
-        self.assertEqual(mock_create_set.call_count, 3)
+        # Test with empty volume
+        empty_volume = np.zeros((3, 10, 10))
+        result = self.transformer.get_optimal_slice_range(empty_volume, 0.9)
+        self.assertEqual(result, set())  # Should return empty set
 
-        # Check that create_set was called with correct arguments
-        calls = mock_create_set.call_args_list
+    def test_get_indices_mask_slices(self):
+        """Test get_indices_mask_slices with different mask volumes"""
+        # Test with sample mask
+        expected_slices = {1, 2}  # Slices 1 and 2 have mask values
+        result = self.transformer.get_indices_mask_slices(self.sample_mask)
+        self.assertEqual(result, expected_slices)
 
-        # Check train set (first 2 patients)
-        train_filepaths = calls[0][0][0]
-        self.assertEqual(len(train_filepaths['t1']), 2)
-        self.assertEqual(calls[0][0][1], 'train')
+        # Test with empty mask
+        empty_mask = np.zeros((5, 10, 10))
+        result = self.transformer.get_indices_mask_slices(empty_mask)
+        self.assertEqual(result, set())  # Should return empty set
 
-        # Check validation set (1 patient)
-        val_filepaths = calls[1][0][0]
-        self.assertEqual(len(val_filepaths['t1']), 1)
-        self.assertEqual(calls[2][0][1], 'validation')
+        # Test with all slices having mask
+        full_mask = np.ones((5, 10, 10))
+        expected_slices = {0, 1, 2, 3, 4}  # All slices have mask
+        result = self.transformer.get_indices_mask_slices(full_mask)
+        self.assertEqual(result, expected_slices)
 
-        # Check test set (1 patient)
-        test_filepaths = calls[2][0][0]
-        self.assertEqual(len(test_filepaths['t1']), 1)
-        self.assertEqual(calls[1][0][1], 'test')
+        # Test with single slice having mask
+        single_mask = np.zeros((5, 10, 10))
+        single_mask[3, 5, 5] = 1
+        expected_slices = {3}  # Only slice 3 has mask
+        result = self.transformer.get_indices_mask_slices(single_mask)
+        self.assertEqual(result, expected_slices)
 
-    @patch('numpy.save')
-    def test_save_slices(self, mock_np_save):
-        # Create mock slices
-        slices = [np.ones((10, 10)), np.zeros((10, 10))]
-
-        # Call save_slices
-        self.transformer.save_slices(
-            slices=slices,
-            patient_name='patient1',
-            modality='t1',
-            main_dir=self.target_dir,
-            slice_min_index=50
-        )
-
-        # Check directory creation
-        for i in range(len(slices)):
-            slice_dir = os.path.join(self.target_dir, 'patient1', f'slice{50 + i}')
-            self.assertTrue(os.path.exists(slice_dir))
-
-        # Check that numpy.save was called correctly
-        self.assertEqual(mock_np_save.call_count, 2)
-
-        # Verify the save paths
-        save_paths = [call_args[0][0] for call_args in mock_np_save.call_args_list]
-        self.assertIn(os.path.join(self.target_dir, 'patient1', 'slice50', 't1.npy'), save_paths)
-        self.assertIn(os.path.join(self.target_dir, 'patient1', 'slice51', 't1.npy'), save_paths)
-
-    @patch('src.utils.files_operations.get_indices_mask_slices')
-    @patch('src.utils.files_operations.get_youngest_dir')
-    @patch('src.utils.files_operations.load_nii_slices')
-    @patch('src.utils.files_operations.TransformNIIDataToNumpySlices.save_slices')
-    def test_create_set(self, mock_save_slices, mock_load_slices, mock_get_youngest_dir, mock_get_indices):
+    @patch('src.utils.files_operations.TransformVolumesToNumpySlices.load_slice')
+    @patch('src.utils.files_operations.TransformVolumesToNumpySlices.get_optimal_slice_range')
+    def test_smart_load_slices(self, mock_get_optimal_slice_range, mock_load_slice):
+        """Test smart_load_slices with different parameters"""
         # Setup mocks
-        mock_get_youngest_dir.return_value = 'patient1'
-        mock_get_indices.return_value = {50, 51, 52}
-        mock_load_slices.return_value = ([np.ones((10, 10))], [50])
+        mock_load_slice.return_value = self.sample_volume
+        mock_get_optimal_slice_range.return_value = {1, 2}
 
-        # Mock modality paths
-        modality_paths = {
-            't1': ['path/to/patient1/t1.nii'],
-            't2': ['path/to/patient1/t2.nii'],
-            'mask': ['path/to/patient1/mask.nii']
-        }
+        # Test with default parameters (compute_optimal_slice_range=True)
+        slices, indices = self.transformer.smart_load_slices("test_file.npy")
 
-        # Call create_set
-        self.transformer.create_set(modality_paths, 'train')
+        # Check if load_slice was called
+        mock_load_slice.assert_called_once_with("test_file.npy")
+        # Check if get_optimal_slice_range was called
+        mock_get_optimal_slice_range.assert_called_once()
 
-        # Check that load_nii_slices was called for each modality
-        self.assertEqual(mock_load_slices.call_count, 3)
+        # Check results
+        self.assertEqual(len(slices), 2)  # Should return 2 slices
+        self.assertEqual(indices, {1, 2})  # Should return indices {1, 2}
 
-        # Check that save_slices was called for each modality
-        self.assertEqual(mock_save_slices.call_count, 3)
+        # Reset mocks
+        mock_load_slice.reset_mock()
+        mock_get_optimal_slice_range.reset_mock()
+
+        # Test with min_slices_index and max_slices_index provided
+        slices, indices = self.transformer.smart_load_slices("test_file.npy", min_slices_index=1, max_slices_index=3)
+
+        # Check results
+        self.assertEqual(len(slices), 3)  # Should return 3 slices (1, 2, 3)
+        self.assertEqual(indices, {1, 2, 3})  # Should still return optimal indices {1, 2}
+
+        # Reset mocks
+        mock_load_slice.reset_mock()
+        mock_get_optimal_slice_range.reset_mock()
+
+        # Test with compute_optimal_slice_range=False
+        slices, indices = self.transformer.smart_load_slices(
+            "test_file.npy",
+            min_slices_index=1,
+            max_slices_index=3,
+            compute_optimal_slice_range=False
+        )
+
+        # Check if get_optimal_slice_range was not called
+        mock_get_optimal_slice_range.assert_not_called()
+
+        # Check results
+        self.assertEqual(len(slices), 3)  # Should return 3 slices (1, 2, 3)
+        self.assertEqual(indices, {1, 2, 3})  # Should return all indices in range
+
+        # Test with invalid parameters (compute_optimal_slice_range=False and no indices)
+        with self.assertRaises(ValueError):
+            self.transformer.smart_load_slices("test_file.npy", compute_optimal_slice_range=False)
+
+    @patch('logging.log')
+    @patch('src.utils.files_operations.TransformVolumesToNumpySlices.load_slice')
+    @patch('src.utils.files_operations.TransformVolumesToNumpySlices.get_optimal_slice_range')
+    def test_smart_load_slices_with_empty_result(self, mock_get_optimal_slice_range, mock_load_slice, mock_logging):
+        """Test smart_load_slices when get_optimal_slice_range returns empty set"""
+        # Setup mocks
+        mock_load_slice.return_value = self.sample_volume
+        mock_get_optimal_slice_range.return_value = set()  # Return empty set
+
+        # Test with default parameters should raise ValueError
+        with self.assertRaises(ValueError):
+            self.transformer.smart_load_slices("test_file.npy")
 
 
 if __name__ == '__main__':
