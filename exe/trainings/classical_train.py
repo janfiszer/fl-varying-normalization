@@ -15,6 +15,8 @@ if __name__ == '__main__':
     if config.LOCAL:
         train_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
         validation_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
+        num_epochs = config.N_EPOCHS_CENTRALIZED
+
     else:
         data_dir = sys.argv[1]
         train_directory = os.path.join(data_dir, "train")
@@ -65,13 +67,13 @@ if __name__ == '__main__':
     model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-{config.LOSS_TYPE.name}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
     Path(model_dir).mkdir(parents=True, exist_ok=True)
     logging.warning("OVERWRITING THE MODELDIR")
-    
+
+    config_path = "./configs/config.py"
+
     try:
-        config_path = "./configs/config.py"
         copy2(config_path, f"{model_dir}/config.py")
     except FileNotFoundError:
         logging.error(f"Config file not found at {config_path}. You are in {os.getcwd()}")
-
 
     if config.LOCAL:
         unet.perform_train(trainloader, optimizer,

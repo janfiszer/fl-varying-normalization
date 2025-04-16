@@ -1,4 +1,9 @@
-from typing import Dict, List, Any, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Any, Optional, Sequence, Tuple, Union, Literal
+
+from torch import Tensor
+from torchmetrics.functional.segmentation.generalized_dice import _generalized_dice_validate_args, \
+    _generalized_dice_update, _generalized_dice_compute
+from torchmetrics.image import StructuralSimilarityIndexMeasure
 
 from configs import config
 from torchmetrics.metric import Metric
@@ -69,20 +74,26 @@ class LossGeneralizedTwoClassDice(torch.nn.Module):
 
 
 class GeneralizedTwoClassDice(Metric):
-    def __init__(self):
-        super().__init__()
-        self.add_state("dice_score", default=torch.tensor(0), dist_reduce_fx="cat")
+    def __init__(self, binarize_threshold: int = 0.5, **kwargs):
+        super().__init__(**kwargs)
+        self.add_state("dice_score", default=torch.tensor(0.0), dist_reduce_fx="cat")
         self.add_state("samples", default=torch.tensor(0), dist_reduce_fx="sum")
+
+        self.binarize_threshold = binarize_threshold
 
     def update(self, preds: torch.Tensor, targets: torch.Tensor):
         assert preds.shape == targets.shape
 
-        self.dice_score += self.compute_dice(preds, targets)
+        self.dice_score += self.compute_dice((preds > self.binarize_threshold).int(), targets)
         self.samples += preds.shape[0]
 
     def compute(self) -> torch.Tensor:
         """Compute the final generalized dice score."""
-        return self.score / self.samples
+        return (self.dice_score / self.samples).clone().detach()
+
+    def reset(self):
+        self.dice_score = torch.tensor(0.0)
+        self.samples = torch.tensor(0)
 
     @staticmethod
     def compute_dice(preds, targets):
@@ -96,9 +107,6 @@ class GeneralizedTwoClassDice(Metric):
         denominator = weight_1 * (preds + targets).sum() + weight_0 * ((1 - preds) + (1 - targets)).sum()
 
         return 2 * intersect / denominator
-
-    def compute(self) -> Any:
-        pass
 
 
 ####################
