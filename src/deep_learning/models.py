@@ -22,7 +22,8 @@ batch_print_freq = config.BATCH_PRINT_FREQ
 
 mse = nn.MSELoss()
 
-dice_generalized = metrics.generalized_dice
+old_dice_generalized = metrics.generalized_dice
+two_class_generalized_dice = metrics.GeneralizedTwoClassDice().to(device)
 dice_2_class = metrics.dice_2_class
 # dice_score = Dice().to(device)
 generalized_dice_torchmetrics = metrics.GeneralizedDiceScore(2).to(device)
@@ -49,12 +50,12 @@ class UNet(nn.Module):
         else:
             self.descriptive_metric = "loss"
 
-
         self.available_metrics = {"loss": self.criterion,
                                   "mse": mse,
                                   "generalized_dice_torchmetrics": generalized_dice_torchmetrics,
+                                  "two_class_generalized_dice": two_class_generalized_dice,
                                   # "dice_classification": dice_score,
-                                  "dice_generalized": dice_generalized,
+                                  "old_dice_generalized": old_dice_generalized,
                                   "dice_2_class": dice_2_class,
                                   "jaccard": jaccard_index}
 
