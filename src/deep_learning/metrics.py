@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from configs import config
@@ -7,18 +7,10 @@ from torchmetrics.image import StructuralSimilarityIndexMeasure
 from torchmetrics.metric import Metric
 from torchmetrics.segmentation import GeneralizedDiceScore
 
-from typing import List, Optional, Sequence, Tuple, Union
-
 import torch
-import torch.nn.functional as F
-from torch import Tensor
-from typing_extensions import Literal
-
-from torchmetrics.utilities.checks import _check_same_shape
-from torchmetrics.utilities.compute import _safe_divide
 
 
-def metrics_to_str(metrics: Dict[str, List[float]], starting_symbol="", sep="\t"):
+def metrics_to_str(metrics: Dict[str, List[float]], starting_symbol: str = "", sep="\t"):
     metrics_epoch_str = starting_symbol
     for metric_name, epoch_value in metrics.items():
         metrics_epoch_str += f"{metric_name}: {epoch_value:.3f}{sep}"
@@ -27,13 +19,13 @@ def metrics_to_str(metrics: Dict[str, List[float]], starting_symbol="", sep="\t"
 
 
 class GeneralizedDiceLoss(torch.nn.Module):
-    def __init__(self, num_classes, device, binary_crossentropy=False):
+    def __init__(self, num_classes: int, device: str, binary_crossentropy: bool = False):
         super(GeneralizedDiceLoss, self).__init__()
-        self.dice = GeneralizedDiceScore(num_classes, per_class=True).to()
+        self.dice = GeneralizedDiceScore(num_classes, per_class=True).to(device)
         self.binary_crossentropy = binary_crossentropy
 
         if binary_crossentropy:
-            self.bce_loss = torch.nn.BCELoss().to()
+            self.bce_loss = torch.nn.BCELoss().to(device)
 
     def forward(self, predict, target):
         assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"

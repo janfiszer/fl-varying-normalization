@@ -10,7 +10,6 @@ import torch
 from torch.utils.data import Dataset
 
 
-
 class SegmentationDataset2DSlices(Dataset):
     """
     Dataset class with previous use of TransformNIIDataToNumpySlices
@@ -26,6 +25,7 @@ class SegmentationDataset2DSlices(Dataset):
     EPS = 1e-6
 
     def __init__(self, data_path: str, modalities_names: List, mask_dir: str, image_size=None, binarize_mask=False):
+        # TODO: consider list instead of one datapath
         # declaring booleans
         self.binarize_mask = binarize_mask
         self.mask_dir = mask_dir
