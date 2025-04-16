@@ -58,7 +58,7 @@ if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # criterion = metrics.BinaryDiceLoss()
-    criterion = metrics.loss_generalized_dice
+    criterion = metrics.LossGeneralizedTwoClassDice(device)  # TODO: binarize threshold
 
     unet = UNet(criterion).to(device)
     optimizer = torch.optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
