@@ -1,9 +1,6 @@
 from typing import Dict, List, Any, Optional, Sequence, Tuple, Union
 
-import numpy as np
 from configs import config
-from torch.nn import MSELoss
-from torchmetrics.image import StructuralSimilarityIndexMeasure
 from torchmetrics.metric import Metric
 from torchmetrics.segmentation import GeneralizedDiceScore
 
@@ -44,6 +41,64 @@ class GeneralizedDiceLoss(torch.nn.Module):
 
     def __repr__(self):
         return "GeneralizedDiceLoss"
+
+
+class LossGeneralizedTwoClassDice(torch.nn.Module):
+    def __init__(self, device: str, binary_crossentropy: bool = False):
+        super(LossGeneralizedTwoClassDice, self).__init__()
+        self.dice = GeneralizedTwoClassDice().to(device)
+        self.binary_crossentropy = binary_crossentropy
+
+        if binary_crossentropy:
+            self.bce_loss = torch.nn.BCELoss().to(device)
+
+    def forward(self, predict, target):
+        dice_scores = self.dice(predict, target)
+        loss = 1 - dice_scores.mean()
+
+        if self.binary_crossentropy:
+            bce_loss = self.bce_loss(predict, target.float())
+            total_loss = loss + bce_loss
+        else:
+            total_loss = loss
+
+        return total_loss
+
+    def __repr__(self):
+        return "GeneralizedDiceLoss"
+
+
+class GeneralizedTwoClassDice(Metric):
+    def __init__(self):
+        super().__init__()
+        self.add_state("dice_score", default=torch.tensor(0), dist_reduce_fx="cat")
+        self.add_state("samples", default=torch.tensor(0), dist_reduce_fx="sum")
+
+    def update(self, preds: torch.Tensor, targets: torch.Tensor):
+        assert preds.shape == targets.shape
+
+        self.dice_score += self.compute_dice(preds, targets)
+        self.samples += preds.shape[0]
+
+    def compute(self) -> torch.Tensor:
+        """Compute the final generalized dice score."""
+        return self.score / self.samples
+
+    @staticmethod
+    def compute_dice(preds, targets):
+        num_samples_0 = (targets == 0).sum().item()
+        num_samples_1 = (targets == 1).sum().item()
+
+        weight_0 = 0 if num_samples_0 == 0 else 1 / (num_samples_0 ** 2)
+        weight_1 = 0 if num_samples_1 == 0 else 1 / (num_samples_1 ** 2)
+
+        intersect = weight_1 * (preds * targets).sum() + weight_0 * ((1 - preds) * (1 - targets)).sum()
+        denominator = weight_1 * (preds + targets).sum() + weight_0 * ((1 - preds) + (1 - targets)).sum()
+
+        return 2 * intersect / denominator
+
+    def compute(self) -> Any:
+        pass
 
 
 ####################
@@ -130,16 +185,7 @@ def weighted_BCE(predict, target):
 
 
 def loss_generalized_dice(predict, target):
-    num_samples_0 = (target == 0).sum().item()
-    num_samples_1 = (target == 1).sum().item()
-
-    weight_0 = 0 if num_samples_0 == 0 else 1/(num_samples_0*num_samples_0)
-    weight_1 = 0 if num_samples_1 == 0 else 1/(num_samples_1*num_samples_1)
-
-    intersect = weight_1*(predict * target).sum() + weight_0*((1 - predict) * (1 - target)).sum()
-    denominator = weight_1*(predict + target).sum() + weight_0*((1 - predict) + (1 - target)).sum()
-
-    loss = 1 - (2*(intersect/denominator))
+    loss = 1 - generalized_dice(predict, target)
 
     return loss
 
@@ -148,8 +194,8 @@ def generalized_dice(predict, target):
     num_samples_0 = (target == 0).sum().item()
     num_samples_1 = (target == 1).sum().item()
 
-    weight_0 = 0 if num_samples_0 == 0 else 1 / (num_samples_0 * num_samples_0)
-    weight_1 = 0 if num_samples_1 == 0 else 1 / (num_samples_1 * num_samples_1)
+    weight_0 = 0 if num_samples_0 == 0 else 1 / (num_samples_0 ** 2)
+    weight_1 = 0 if num_samples_1 == 0 else 1 / (num_samples_1 ** 2)
 
     intersect = weight_1 * (predict * target).sum() + weight_0 * ((1 - predict) * (1 - target)).sum()
     denominator = weight_1 * (predict + target).sum() + weight_0 * ((1 - predict) + (1 - target)).sum()
