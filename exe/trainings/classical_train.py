@@ -2,7 +2,6 @@ import os
 import sys
 from shutil import copy2
 from pathlib import Path
-import torch.optim as optim
 import torch
 
 from src.deep_learning.datasets import *
@@ -55,12 +54,19 @@ if __name__ == '__main__':
     criterion = metrics.loss_generalized_dice
 
     unet = UNet(criterion).to(device)
-    optimizer = optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
+    optimizer = torch.optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
 
     representative_test_dir = get_youngest_dir(train_directory)
-    model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-{config.LOSS_TYPE.name}-ep{config.N_EPOCHS_CENTRALIZED}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
-    Path(model_dir).mkdir(parents=True, exist_ok=config.LOCAL)
-    copy2("../.././configs/config.py", f"{model_dir}/config.py")
+    model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-{config.LOSS_TYPE.name}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
+    Path(model_dir).mkdir(parents=True, exist_ok=True)
+    logging.warning("OVERWRITING THE MODELDIR")
+    
+    try:
+        config_path = "./configs/config.py"
+        copy2(config_path, f"{model_dir}/config.py")
+    except FileNotFoundError:
+        logging.error(f"Config file not found at {config_path}. You are in {os.getcwd()}")
+
 
     if config.LOCAL:
         unet.perform_train(trainloader, optimizer,
