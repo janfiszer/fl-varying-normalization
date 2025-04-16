@@ -87,7 +87,6 @@ class Normalizer:
         return {}
 
     def fcm_each_normalization(self, t1_image):
-        # TODO: double check if it should be done at each time
         _ = self.normalizer(t1_image)
 
         return {}

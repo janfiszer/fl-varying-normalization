@@ -125,9 +125,6 @@ class TransformVolumesToNumpySlices:
                 current_set_filepaths = filepaths[lower_bound:upper_bound]
                 # assigning the set to the given modality
                 train_test_split_sets[modality] = current_set_filepaths
-                # FOR NOW parent=True as the solution TODO: reconsider
-                # creating directories for each patient
-                # self.create_empty_dirs(os.path.join(self.origin_data_dir, s),  get_youngest_dir(current_set_filepaths))
 
             self.create_set(train_test_split_sets, s)
 

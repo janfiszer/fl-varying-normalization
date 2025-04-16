@@ -177,6 +177,8 @@ class UNet(nn.Module):
         """
         logging.info(f"\n\tTRAINING... \n\ton device: {device} \n\twith loss: {self.criterion}\n")
         # TODO: automatic model_dir
+        if model_dir is None:
+            model_dir = f"{config.DATA_ROOT_DIR}/trained_models/gen-model-{config.LOSS_TYPE.name}-ep{epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
 
         if config.USE_WANDB:
             wandb.login(key=creds.api_key_wandb)
@@ -188,8 +190,6 @@ class UNet(nn.Module):
             raise TypeError(f"Loss function (criterion) has to be callable. It is {type(self.criterion)} which is not.")
 
         if any([history_filename, plots_dir, model_save_filename]):
-            # Path(model_dir).mkdir(exist_ok=True)
-
             logging.info(f"\tModel, history and plots will be saved to {model_dir}")
         else:
             logging.warning(f"\tNeither model, history nor plots from the training process will be saved!")
@@ -219,7 +219,7 @@ class UNet(nn.Module):
 
             logging.info("\tVALIDATION...")
             if validationloader is not None:
-                val_metric = self.evaluate(validationloader, plots_path, plot_every_batch_with_metrics=True)
+                val_metric = self.evaluate(validationloader, plots_path, plot_every_batch_with_metrics=config.PLOT_BATCH_WITH_METRICS)
 
                 for metric in val_metric_names:
                     # trimming after val_ to get only the metric name since it is provided by the
