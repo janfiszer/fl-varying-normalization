@@ -39,11 +39,16 @@ class UNet(nn.Module):
             - GroupNorm (the number of groups specified in the config)
     """
 
-    def __init__(self, criterion=None, bilinear=False, normalization=config.NORMALIZATION):
+    def __init__(self, criterion=None, descriptive_metric = None, bilinear=False, normalization=config.NORMALIZATION):
         super(UNet, self).__init__()
 
         self.criterion = criterion
         self.bilinear = bilinear
+        if descriptive_metric:
+            self.descriptive_metric = descriptive_metric
+        else:
+            self.descriptive_metric = "loss"
+
 
         self.available_metrics = {"loss": self.criterion,
                                   "mse": mse,
@@ -96,7 +101,7 @@ class UNet(nn.Module):
         filepath = f"{dir_name}/{filename}"
         torch.save(self.state_dict(), filepath)
 
-        logging.info("Model saved to: ", filepath)
+        logging.info(f"Model saved to: {fi}")
 
     def _train_one_epoch(self, trainloader, optimizer):
         """
@@ -219,7 +224,7 @@ class UNet(nn.Module):
 
             logging.info("\tVALIDATION...")
             if validationloader is not None:
-                val_metric = self.evaluate(validationloader, plots_path, plot_every_batch_with_metrics=config.PLOT_BATCH_WITH_METRICS)
+                val_metric = self.evaluate(validationloader, plots_path, plot_every_batch_with_metrics=config.PLOT_BATCH_WITH_METRICS, epoch_number=epoch)
 
                 for metric in val_metric_names:
                     # trimming after val_ to get only the metric name since it is provided by the
@@ -275,7 +280,9 @@ class UNet(nn.Module):
         if compute_std and testloader.batch_size != 1:
             raise ValueError("The computations will result in wrong results! Batch size should be 1 if `compute_std=True`.")
         if epoch_number is None:
-            epoch_number = ""
+            epoch_number = "last_epoch"
+        else:
+            epoch_number = f"ep_{epoch_number}"
 
         logging.info(f"\t\tON DEVICE: {device} \n\t\t\t\tWITH LOSS: {self.criterion}\n")
 
@@ -331,10 +338,12 @@ class UNet(nn.Module):
                     if testloader.batch_size == 1:
                         if plots_path:
                             # if isinstance(metric_obj, metrics.GeneralizedDiceLoss) and metric_value.item() > high_mse_value:
+
                             batches_with_metrics_dirpath = path.join(plots_path, f"batches_with_metrics_ep{epoch_number}")
                             Path(batches_with_metrics_dirpath).mkdir(exist_ok=True)
-                            filepath = path.join(batches_with_metrics_dirpath, f"slice{batch_index}_{metric_name}{metric_value:.2f}.jpg")
 
+                            descriptive_metric_value = metrics_values[self.descriptive_metric][-1]
+                            filepath = path.join(batches_with_metrics_dirpath, f"slice{batch_index}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
                             current_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in metrics_values.keys()}
 
                             visualization.plot_all_modalities_and_target(
