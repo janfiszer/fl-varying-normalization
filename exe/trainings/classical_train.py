@@ -18,8 +18,8 @@ if __name__ == '__main__':
         validation_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
     else:
         data_dir = sys.argv[1]
-        train_directory = [os.path.join(data_dir, "train")]
-        validation_directory = [os.path.join(data_dir, "validation")]
+        train_directory = os.path.join(data_dir, "train")
+        validation_directory = os.path.join(data_dir, "validation")
         representative_test_dir = train_directory[0].split(os.path.sep)[-2]
         if len(sys.argv) > 2:
             num_epochs = int(sys.argv[2])
