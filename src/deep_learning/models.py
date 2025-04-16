@@ -181,8 +181,8 @@ class UNet(nn.Module):
         if config.USE_WANDB:
             wandb.login(key=creds.api_key_wandb)
             wandb.init(
-                name=model_dir,  # keeping only the last part of the model_dir (it stores all the viable information)
-                project=f"fl-varying-normalization")
+                name=model_dir.split(path.sep)[-1],  # keeping only the last part of the model_dir (it stores all the viable information)
+                project=config.PROJECT_NAME)  # TODO: config as dict
 
         if not isinstance(self.criterion, Callable):
             raise TypeError(f"Loss function (criterion) has to be callable. It is {type(self.criterion)} which is not.")
@@ -253,6 +253,9 @@ class UNet(nn.Module):
 
         if model_save_filename is not None:
             self.save(model_dir, model_save_filename)
+
+        if config.USE_WANDB:
+            wandb.finish()
 
         return history
 

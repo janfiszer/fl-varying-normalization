@@ -7,8 +7,6 @@ from torchmetrics.image import StructuralSimilarityIndexMeasure
 from torchmetrics.metric import Metric
 from torchmetrics.segmentation import GeneralizedDiceScore
 
-from scipy import signal
-
 from typing import List, Optional, Sequence, Tuple, Union
 
 import torch
