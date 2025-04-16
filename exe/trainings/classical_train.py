@@ -34,8 +34,13 @@ if __name__ == '__main__':
         valloader = DataLoader(validation_dataset,
                                batch_size=1)
     else:
+        if config.PLOT_BATCH_WITH_METRICS:
+            val_batch_size = 1
+        else:
+            val_batch_size = config.BATCH_SIZE
+
         num_workers = config.NUM_WORKERS
-        print(f"Training with {num_workers} num_workers.")
+        logging.info(f"Training with {num_workers} num_workers.")
 
         trainloader = DataLoader(train_dataset,
                                  batch_size=config.BATCH_SIZE,
@@ -43,7 +48,7 @@ if __name__ == '__main__':
                                  num_workers=config.NUM_WORKERS,
                                  pin_memory=True)
         valloader = DataLoader(validation_dataset,
-                               batch_size=config.BATCH_SIZE,
+                               batch_size=val_batch_size,
                                shuffle=True,
                                num_workers=config.NUM_WORKERS,
                                pin_memory=True)
