@@ -102,7 +102,7 @@ class UNet(nn.Module):
         filepath = f"{dir_name}/{filename}"
         torch.save(self.state_dict(), filepath)
 
-        logging.info(f"Model saved to: {fi}")
+        logging.info(f"Model saved to: {filepath}")
 
     def _train_one_epoch(self, trainloader, optimizer):
         """
@@ -343,7 +343,7 @@ class UNet(nn.Module):
                             batches_with_metrics_dirpath = path.join(plots_path, f"batches_with_metrics_ep{epoch_number}")
                             Path(batches_with_metrics_dirpath).mkdir(exist_ok=True)
 
-                            descriptive_metric_value = metrics_values[self.descriptive_metric][-1]
+                            descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
                             filepath = path.join(batches_with_metrics_dirpath, f"slice{batch_index}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
                             current_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in metrics_values.keys()}
 
