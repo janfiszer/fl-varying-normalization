@@ -237,7 +237,7 @@ class UNet(nn.Module):
 
             logging.info("\tVALIDATION...")
             if validationloader is not None:
-                val_metric = self.evaluate(validationloader, plots_path, plot_every_batch_with_metrics=config.PLOT_BATCH_WITH_METRICS, epoch_number=epoch)
+                val_metric = self.evaluate(validationloader, plots_path, plot_every_batch_with_metrics=config.PLOT_BATCH_WITH_METRICS, plot_last_batch_each_epoch=config.PLOT_EACH_EPOCH, epoch_number=epoch)
 
                 for metric in val_metric_names:
                     # trimming after val_ to get only the metric name since it is provided by the

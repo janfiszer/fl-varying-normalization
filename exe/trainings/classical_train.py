@@ -92,5 +92,4 @@ if __name__ == '__main__':
                            model_dir=model_dir,
                            history_filename="history.pkl",
                            plots_dir="predictions",
-                           save_best_model=True,
-                           plot_last_batch_each_epoch=True)
+                           save_best_model=True)
