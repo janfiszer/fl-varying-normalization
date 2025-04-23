@@ -26,7 +26,7 @@ old_dice_generalized = metrics.generalized_dice
 two_class_generalized_dice = metrics.GeneralizedTwoClassDice().to(device)
 dice_2_class = metrics.dice_2_class
 # dice_score = Dice().to(device)
-generalized_dice_torchmetrics = metrics.GeneralizedDiceScore(2).to(device)
+generalized_dice_torchmetrics = metrics.GeneralizedDiceScore(1).to(device)
 # dice_score = Dice().to(device)
 jaccard_index = BinaryJaccardIndex().to(device)
 
