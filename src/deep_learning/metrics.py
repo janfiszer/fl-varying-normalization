@@ -49,13 +49,13 @@ class GeneralizedDiceLoss(torch.nn.Module):
 
 
 class LossGeneralizedTwoClassDice(torch.nn.Module):
-    def __init__(self, device: str, binary_crossentropy: bool = False):
+    def __init__(self, device, binary_crossentropy: bool = False):
         super(LossGeneralizedTwoClassDice, self).__init__()
         self.dice = GeneralizedTwoClassDice().to(device)
         self.binary_crossentropy = binary_crossentropy
 
         if binary_crossentropy:
-            self.bce_loss = torch.nn.BCELoss().to(device)
+            self.bce_loss = torch.nn.BCELoss()
 
     def forward(self, predict, target):
         dice_scores = self.dice(predict, target)
@@ -79,30 +79,63 @@ class GeneralizedTwoClassDice(Metric):
         self.add_state("dice_score", default=torch.tensor(0.0), dist_reduce_fx="cat")
         self.add_state("samples", default=torch.tensor(0), dist_reduce_fx="sum")
 
-        self.binarize_threshold = binarize_threshold
+        # self.add_state("dice_score_no_binarized", default=torch.tensor(0.0), dist_reduce_fx="cat")
+        # self.register_buffer("device_helper", torch.tensor(0.))
+        # self.register_buffer("binarize_threshold", torch.tensor(binarize_threshold))
+        # self.binarize_threshold = torch.tensor(binarize_threshold).to(device) # TODO: reconsider where is should be moved to the device
 
     def update(self, preds: torch.Tensor, targets: torch.Tensor):
         assert preds.shape == targets.shape
 
-        self.dice_score += self.compute_dice((preds > self.binarize_threshold).int(), targets)
+        # cast_1 = (preds > self.binarize_threshold).to(dtype=torch.float64)
+        # cast_2 = (preds > self.binarize_threshold).float()
+        # cast_3 = (preds > self.binarize_threshold).type(torch.float64)
+        # cast_4 = preds.int()
+
+        self.dice_score = self.compute_dice(preds, targets)
+
+        # print(f"preds: {preds.get_device()}")
+        # print(f"self.binarize_threshold: {self.binarize_threshold.get_device()}")
+        # print(f"targets: {targets.get_device()}")
+        # print(f"cast_1: {cast_1.get_device()}")
+        # print(f"cast_2: {cast_2.get_device()}")
+        # print(f"cast_3: {cast_3.get_device()}")
+        # print(f"cast_4: {cast_4.get_device()}")
+        # print(f"dice_score_no_binarized: {dice_score_no_binarized.get_device()}")
+
+        # for i, cast in enumerate([cast_1, cast_2, cast_3, cast_4]):
+        #     try:
+        #         self.dice_score += self.compute_dice(cast, targets)
+        #     except RuntimeError:
+        #         print(f"cast {i} sucks")
         self.samples += preds.shape[0]
 
     def compute(self) -> torch.Tensor:
         """Compute the final generalized dice score."""
-        return (self.dice_score / self.samples).clone().detach()
+        return self.dice_score / self.samples
 
     def reset(self):
         self.dice_score = torch.tensor(0.0)
         self.samples = torch.tensor(0)
 
-    @staticmethod
-    def compute_dice(preds, targets):
+    def compute_dice(self, preds, targets):
         num_samples_0 = (targets == 0).sum().item()
         num_samples_1 = (targets == 1).sum().item()
 
         weight_0 = 0 if num_samples_0 == 0 else 1 / (num_samples_0 ** 2)
         weight_1 = 0 if num_samples_1 == 0 else 1 / (num_samples_1 ** 2)
 
+        # preds_int = preds.int()
+        # print("preds_int")
+        # print((preds_int == 0).sum().item())
+        # print((preds_int == 1).sum().item())
+        # print(torch.flatten(preds).shape)
+
+        # preds_thresholded = (preds > self.binarize_threshold).float()
+        # print("preds_thresholded")
+        # print((preds_thresholded == 0).sum().item())
+        # print((preds_thresholded == 1).sum().item())
+        # print(torch.flatten(preds).shape)
         intersect = weight_1 * (preds * targets).sum() + weight_0 * ((1 - preds) * (1 - targets)).sum()
         denominator = weight_1 * (preds + targets).sum() + weight_0 * ((1 - preds) + (1 - targets)).sum()
 
