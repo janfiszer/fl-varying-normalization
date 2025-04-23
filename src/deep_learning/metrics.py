@@ -74,40 +74,20 @@ class LossGeneralizedTwoClassDice(torch.nn.Module):
 
 
 class GeneralizedTwoClassDice(Metric):
-    def __init__(self, binarize_threshold: int = 0.5, **kwargs):
-        super().__init__(**kwargs)
-        self.add_state("dice_score", default=torch.tensor(0.0), dist_reduce_fx="cat")
-        self.add_state("samples", default=torch.tensor(0), dist_reduce_fx="sum")
+    # GeneralizedDice from torchmetrics is using this and seems to be nice and applicable here too
+    # but dunno how to do it...
+    full_state_update: bool = False
 
-        # self.add_state("dice_score_no_binarized", default=torch.tensor(0.0), dist_reduce_fx="cat")
-        # self.register_buffer("device_helper", torch.tensor(0.))
-        # self.register_buffer("binarize_threshold", torch.tensor(binarize_threshold))
-        # self.binarize_threshold = torch.tensor(binarize_threshold).to(device) # TODO: reconsider where is should be moved to the device
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.add_state("dice_score", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("samples", default=torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, preds: torch.Tensor, targets: torch.Tensor):
         assert preds.shape == targets.shape
 
-        # cast_1 = (preds > self.binarize_threshold).to(dtype=torch.float64)
-        # cast_2 = (preds > self.binarize_threshold).float()
-        # cast_3 = (preds > self.binarize_threshold).type(torch.float64)
-        # cast_4 = preds.int()
-
         self.dice_score += self.compute_dice(preds, targets)
-
-        # print(f"preds: {preds.get_device()}")
-        # print(f"self.binarize_threshold: {self.binarize_threshold.get_device()}")
-        # print(f"targets: {targets.get_device()}")
-        # print(f"cast_1: {cast_1.get_device()}")
-        # print(f"cast_2: {cast_2.get_device()}")
-        # print(f"cast_3: {cast_3.get_device()}")
-        # print(f"cast_4: {cast_4.get_device()}")
-        # print(f"dice_score_no_binarized: {dice_score_no_binarized.get_device()}")
-
-        # for i, cast in enumerate([cast_1, cast_2, cast_3, cast_4]):
-        #     try:
-        #         self.dice_score += self.compute_dice(cast, targets)
-        #     except RuntimeError:
-        #         print(f"cast {i} sucks")
         self.samples += preds.shape[0]
 
     def compute(self) -> torch.Tensor:
@@ -118,24 +98,14 @@ class GeneralizedTwoClassDice(Metric):
         self.dice_score = torch.tensor(0.0)
         self.samples = torch.tensor(0)
 
-    def compute_dice(self, preds, targets):
+    @staticmethod
+    def compute_dice(preds, targets):
         num_samples_0 = (targets == 0).sum().item()
         num_samples_1 = (targets == 1).sum().item()
 
         weight_0 = 0 if num_samples_0 == 0 else 1 / (num_samples_0 ** 2)
         weight_1 = 0 if num_samples_1 == 0 else 1 / (num_samples_1 ** 2)
 
-        # preds_int = preds.int()
-        # print("preds_int")
-        # print((preds_int == 0).sum().item())
-        # print((preds_int == 1).sum().item())
-        # print(torch.flatten(preds).shape)
-
-        # preds_thresholded = (preds > self.binarize_threshold).float()
-        # print("preds_thresholded")
-        # print((preds_thresholded == 0).sum().item())
-        # print((preds_thresholded == 1).sum().item())
-        # print(torch.flatten(preds).shape)
         intersect = weight_1 * (preds * targets).sum() + weight_0 * ((1 - preds) * (1 - targets)).sum()
         denominator = weight_1 * (preds + targets).sum() + weight_0 * ((1 - preds) + (1 - targets)).sum()
 
@@ -231,15 +201,15 @@ def loss_generalized_dice(predict, target):
     return loss
 
 
-def generalized_dice(predict, target):
-    num_samples_0 = (target == 0).sum().item()
-    num_samples_1 = (target == 1).sum().item()
+def generalized_dice(preds, targets):
+    num_samples_0 = (targets == 0).sum().item()
+    num_samples_1 = (targets == 1).sum().item()
 
     weight_0 = 0 if num_samples_0 == 0 else 1 / (num_samples_0 ** 2)
     weight_1 = 0 if num_samples_1 == 0 else 1 / (num_samples_1 ** 2)
 
-    intersect = weight_1 * (predict * target).sum() + weight_0 * ((1 - predict) * (1 - target)).sum()
-    denominator = weight_1 * (predict + target).sum() + weight_0 * ((1 - predict) + (1 - target)).sum()
+    intersect = weight_1 * (preds * targets).sum() + weight_0 * ((1 - preds) * (1 - targets)).sum()
+    denominator = weight_1 * (preds + targets).sum() + weight_0 * ((1 - preds) + (1 - targets)).sum()
 
     return 2 * intersect / denominator
 

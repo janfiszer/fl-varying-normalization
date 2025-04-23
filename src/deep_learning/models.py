@@ -26,7 +26,7 @@ old_dice_generalized = metrics.generalized_dice
 two_class_generalized_dice = metrics.GeneralizedTwoClassDice().to(device)
 dice_2_class = metrics.dice_2_class
 # dice_score = Dice().to(device)
-generalized_dice_torchmetrics = metrics.GeneralizedDiceScore(1).to(device)
+generalized_dice_torchmetrics = metrics.GeneralizedDiceScore(1, include_background=True).to(device)
 # dice_score = Dice().to(device)
 jaccard_index = BinaryJaccardIndex().to(device)
 
@@ -344,48 +344,54 @@ class UNet(nn.Module):
 
                 # calculating metrics
                 for metric_name, metric_obj in utilized_metrics.items():
-
                     metric_value = metric_obj(predictions, targets)
                     metrics_values[metric_name].append(metric_value.item())
                 
                 # plotting 
                 if plots_path:
-                    # calculating the last metric values that might be needed as plot info
-                    descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
-                    current_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in metrics_values.keys()}
-
-                    if plot_last_batch_each_epoch:
-                        last_batch_dirpath = path.join(plots_path, f"last_batch_each_epoch")
-                        Path(last_batch_dirpath).mkdir(exist_ok=True)
-                        filepath = path.join(last_batch_dirpath, f"ep{epoch_number}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
-
-                        visualization.plot_all_modalities_and_target(
-                                    images.to('cpu'), targets.to('cpu'), predictions.to('cpu').detach(),
-                                    title=metrics.metrics_to_str(current_batch_metrics, sep=";"),
-                                    savepath=filepath
-                                    )
                     if plot_every_batch_with_metrics:
                         if testloader.batch_size == 1:
-                                batches_with_metrics_dirpath = path.join(plots_path, f"batches_with_metrics_ep{epoch_number}")
-                                Path(batches_with_metrics_dirpath).mkdir(exist_ok=True)
+                            # calculating the last metric values that might be needed as plot info
+                            descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
+                            current_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in
+                                                     metrics_values.keys()}
+                            batches_with_metrics_dirpath = path.join(plots_path, f"batches_with_metrics_{epoch_number}")
+                            Path(batches_with_metrics_dirpath).mkdir(exist_ok=True)
 
-                                filepath = path.join(batches_with_metrics_dirpath, f"slice{batch_index}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
+                            filepath = path.join(batches_with_metrics_dirpath, f"slice{batch_index}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
 
-                                visualization.plot_all_modalities_and_target(
-                                    images.to('cpu'), targets.to('cpu'), predictions.to('cpu').detach(),
-                                    title=metrics.metrics_to_str(current_batch_metrics, sep=";"),
-                                    savepath=filepath
-                                    )
+                            visualization.plot_all_modalities_and_target(
+                                images.to('cpu'), targets.to('cpu'), predictions.to('cpu').detach(),
+                                title=metrics.metrics_to_str(current_batch_metrics, sep=";"),
+                                savepath=filepath
+                                )
                         else:
                             raise logging.error("To have plot every batch with metrics (`plot_every_batch_with_metrics=True`) the in DataLoader `batch_size=1`")
 
                 n_steps += 1
 
-        if plot_metrics_distribution:
-            histograms_dir_path = path.join(plots_path, "histograms")
-            Path(histograms_dir_path).mkdir(exist_ok=True)
-            self.plot_distribution(metrics_values, histograms_dir_path)
-            logging.debug("\t\t\tAll distribution histograms saved.")
+        if plots_path:
+            # saving last batch
+            if plot_last_batch_each_epoch:
+                last_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in
+                                         metrics_values.keys()}
+                descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
+                last_batch_dirpath = path.join(plots_path, f"last_batch_each_epoch")
+                Path(last_batch_dirpath).mkdir(exist_ok=True)
+                filepath = path.join(last_batch_dirpath,
+                                     f"{epoch_number}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
+
+                visualization.plot_all_modalities_and_target(
+                    images.to('cpu'), targets.to('cpu'), predictions.to('cpu').detach(),
+                    title=metrics.metrics_to_str(last_batch_metrics, sep=";"),
+                    savepath=filepath
+                )
+            # saving histograms
+            if plot_metrics_distribution:
+                histograms_dir_path = path.join(plots_path, "histograms")
+                Path(histograms_dir_path).mkdir(exist_ok=True)
+                self.plot_distribution(metrics_values, histograms_dir_path)
+                logging.debug("\t\t\tAll distribution histograms saved.")
 
         averaged_metrics, std_metrics = self._compute_average_std_metric(metrics_values, n_steps, n_skipped)
         metrics_str = metrics.metrics_to_str(averaged_metrics, sep='\t')
