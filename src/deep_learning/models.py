@@ -356,6 +356,7 @@ class UNet(nn.Module):
 
                     if plot_last_batch_each_epoch:
                         last_batch_dirpath = path.join(plots_path, f"last_batch_each_epoch")
+                        Path(last_batch_dirpath).mkdir(exist_ok=True)
                         filepath = path.join(last_batch_dirpath, f"ep{epoch_number}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
 
                         visualization.plot_all_modalities_and_target(
