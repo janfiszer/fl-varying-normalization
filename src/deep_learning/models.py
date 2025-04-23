@@ -40,7 +40,7 @@ class UNet(nn.Module):
             - GroupNorm (the number of groups specified in the config)
     """
 
-    def __init__(self, criterion=None, descriptive_metric = None, bilinear=False, normalization=config.NORMALIZATION):
+    def __init__(self, criterion=None, descriptive_metric: str = None, bilinear=False, normalization=config.NORMALIZATION):
         super(UNet, self).__init__()
 
         self.criterion = criterion
@@ -347,7 +347,10 @@ class UNet(nn.Module):
 
                     metric_value = metric_obj(predictions, targets)
                     metrics_values[metric_name].append(metric_value.item())
+                
+                # plotting 
                 if plots_path:
+                    # calculating the last metric values that might be needed as plot info
                     descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
                     current_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in metrics_values.keys()}
 
@@ -374,8 +377,7 @@ class UNet(nn.Module):
                                     )
                         else:
                             raise logging.error("To have plot every batch with metrics (`plot_every_batch_with_metrics=True`) the in DataLoader `batch_size=1`")
-                    else:
-                        raise ValueError("To have plot every batch with metrics (`plot_every_batch_with_metrics=True`) the `plots_path` need to be provided")               
+
                 n_steps += 1
 
         if plot_metrics_distribution:
