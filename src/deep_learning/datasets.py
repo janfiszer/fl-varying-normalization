@@ -76,11 +76,10 @@ class SegmentationDataset2DSlices(Dataset):
 
         if self.binarize_mask:
             tensor_target = tensor_target > 0
-            tensor_target = tensor_target.int()
 
         # converting to float to be able to perform tensor multiplication
         # otherwise an error
-        return tensor_image.float(), tensor_target.float()
+        return tensor_image.float(), tensor_target.int()
 
 
 class VolumeEvaluation(Dataset):
