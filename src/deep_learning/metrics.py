@@ -92,7 +92,7 @@ class GeneralizedTwoClassDice(Metric):
         # cast_3 = (preds > self.binarize_threshold).type(torch.float64)
         # cast_4 = preds.int()
 
-        self.dice_score = self.compute_dice(preds, targets)
+        self.dice_score += self.compute_dice(preds, targets)
 
         # print(f"preds: {preds.get_device()}")
         # print(f"self.binarize_threshold: {self.binarize_threshold.get_device()}")
