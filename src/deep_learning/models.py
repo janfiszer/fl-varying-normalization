@@ -113,6 +113,18 @@ class UNet(nn.Module):
         epoch_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
         total_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
 
+        # def get_metric_device(metric):
+        #     try:
+        #         return next(metric.parameters()).device
+        #     except StopIteration:
+        #         return next(metric.buffers()).device
+        # import types
+        # print('debugging metric device')
+        # for metric_name, metric_obj in utilized_metrics.items():
+        #     # if not isinstance(metric_obj, types.FunctionType):
+        #     print(metric_name)
+        #     print(metric_obj.device_helper.device)
+
         n_batches = len(trainloader)
 
         start = time.time()
@@ -273,6 +285,7 @@ class UNet(nn.Module):
                  save_preds_dir=None,
                  plot_metrics_distribution=False,
                  plot_every_batch_with_metrics=False,
+                 plot_last_batch_each_epoch=False,
                  epoch_number=None
                  # high_mse_value=float('inf')
                  ):
@@ -334,29 +347,35 @@ class UNet(nn.Module):
 
                     metric_value = metric_obj(predictions, targets)
                     metrics_values[metric_name].append(metric_value.item())
+                if plots_path:
+                    descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
+                    current_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in metrics_values.keys()}
 
-                if plot_every_batch_with_metrics:
-                    if testloader.batch_size == 1:
-                        if plots_path:
-                            # if isinstance(metric_obj, metrics.GeneralizedDiceLoss) and metric_value.item() > high_mse_value:
+                    if plot_last_batch_each_epoch:
+                        last_batch_dirpath = path.join(plots_path, f"last_batch_each_epoch")
+                        filepath = path.join(last_batch_dirpath, f"ep{epoch_number}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
 
-                            batches_with_metrics_dirpath = path.join(plots_path, f"batches_with_metrics_ep{epoch_number}")
-                            Path(batches_with_metrics_dirpath).mkdir(exist_ok=True)
+                        visualization.plot_all_modalities_and_target(
+                                    images.to('cpu'), targets.to('cpu'), predictions.to('cpu').detach(),
+                                    title=metrics.metrics_to_str(current_batch_metrics, sep=";"),
+                                    savepath=filepath
+                                    )
+                    if plot_every_batch_with_metrics:
+                        if testloader.batch_size == 1:
+                                batches_with_metrics_dirpath = path.join(plots_path, f"batches_with_metrics_ep{epoch_number}")
+                                Path(batches_with_metrics_dirpath).mkdir(exist_ok=True)
 
-                            descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
-                            filepath = path.join(batches_with_metrics_dirpath, f"slice{batch_index}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
-                            current_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in metrics_values.keys()}
+                                filepath = path.join(batches_with_metrics_dirpath, f"slice{batch_index}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
 
-                            visualization.plot_all_modalities_and_target(
-                                images.to('cpu'), targets.to('cpu'), predictions.to('cpu').detach(),
-                                title=metrics.metrics_to_str(current_batch_metrics, sep=";"),
-                                savepath=filepath
-                                )
+                                visualization.plot_all_modalities_and_target(
+                                    images.to('cpu'), targets.to('cpu'), predictions.to('cpu').detach(),
+                                    title=metrics.metrics_to_str(current_batch_metrics, sep=";"),
+                                    savepath=filepath
+                                    )
                         else:
-                            raise ValueError("To have plot every batch with metrics (`plot_every_batch_with_metrics=True`) the `plots_path` need to be provided")
-
+                            raise logging.error("To have plot every batch with metrics (`plot_every_batch_with_metrics=True`) the in DataLoader `batch_size=1`")
                     else:
-                        raise logging.error("To have plot every batch with metrics (`plot_every_batch_with_metrics=True`) the in DataLoader `batch_size=1`")
+                        raise ValueError("To have plot every batch with metrics (`plot_every_batch_with_metrics=True`) the `plots_path` need to be provided")               
                 n_steps += 1
 
         if plot_metrics_distribution:
