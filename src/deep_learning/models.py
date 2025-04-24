@@ -151,18 +151,14 @@ class UNet(nn.Module):
                 total_metrics[metric_name] += metric_value.item()
                 epoch_metrics[metric_name] += metric_value.item()
 
-            n_train_steps += 1
-
-            divided_batch_metrics = {metric_name: total_value / batch_print_frequency for metric_name, total_value
-                                     in total_metrics.items()}
-            metrics_str = metrics.metrics_to_str(divided_batch_metrics, starting_symbol="\t")
-
             if index % batch_print_frequency == batch_print_frequency - 1:
+                divided_batch_metrics = {metric_name: total_value / batch_print_frequency for metric_name, total_value
+                                         in total_metrics.items()}
+                metrics_str = metrics.metrics_to_str(divided_batch_metrics, starting_symbol="\t")
                 logging.info(f'\t\tbatch {(index + 1)} out of {n_batches}\t\t{metrics_str}')
-            else:
-                logging.debug(f'\t\tbatch {(index + 1)} out of {n_batches}\t\t{metrics_str}')
+                total_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
 
-            total_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
+            n_train_steps += 1
 
         averaged_epoch_metrics = {metric_name: metric_value / n_train_steps for metric_name, metric_value in
                                   epoch_metrics.items()}
