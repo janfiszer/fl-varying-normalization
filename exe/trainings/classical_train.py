@@ -11,10 +11,12 @@ from src.utils.files_operations import get_youngest_dir
 from torch.utils.data import DataLoader
 
 if __name__ == '__main__':
-
+    # setting default parameters
+    pretrained_model_path = None
     if config.LOCAL:
         train_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
         validation_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
+        pretrained_model_path = "C:\\Users\\JanFiszer\\repos\\fl-varying-normalization\\trained_models\\model-zscore-MSE_DSSIM-ep2-lr0.001-GN-2025-04-24-8h\\best_model.pth"
         num_epochs = config.N_EPOCHS_CENTRALIZED
 
     else:
@@ -27,14 +29,18 @@ if __name__ == '__main__':
         else:
             num_epochs = config.N_EPOCHS_CENTRALIZED
 
+    # creating datasets
     train_dataset = SegmentationDataset2DSlices(train_directory, config.USED_MODALITIES, config.MASK_DIR, binarize_mask=True)
     validation_dataset = SegmentationDataset2DSlices(validation_directory, config.USED_MODALITIES, config.MASK_DIR, binarize_mask=True)
 
+    # setting dataloaders
     if config.LOCAL:
         trainloader = DataLoader(train_dataset,
-                                 batch_size=2)
+                                 batch_size=12,
+                                 shuffle=True)
         valloader = DataLoader(validation_dataset,
-                               batch_size=1)
+                               batch_size=2,
+                               shuffle=True)
     else:
         if config.PLOT_BATCH_WITH_METRICS:
             val_batch_size = 1
@@ -57,16 +63,18 @@ if __name__ == '__main__':
                                pin_memory=True)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    criterion = metrics.LossGeneralizedTwoClassDice(device, binary_crossentropy=True)
-
-    unet = UNet(criterion).to(device)
-    optimizer = torch.optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
-
     representative_test_dir = get_youngest_dir(train_directory)
     model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-{config.LOSS_TYPE.name}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
     Path(model_dir).mkdir(parents=True, exist_ok=True)
-    logging.warning("OVERWRITING THE MODELDIR")
+
+    criterion = metrics.LossGeneralizedTwoClassDice(device, binary_crossentropy=True)
+    unet = UNet(criterion).to(device)
+
+    if pretrained_model_path:
+        unet.load_state_dict(torch.load(pretrained_model_path, map_location=torch.device('cpu')))
+        model_dir = os.path.dirname(pretrained_model_path)
+
+    optimizer = torch.optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
 
     config_path = "./configs/config.py"
 
@@ -79,9 +87,9 @@ if __name__ == '__main__':
         unet.perform_train(trainloader, optimizer,
                            validationloader=valloader,
                            epochs=config.N_EPOCHS_CENTRALIZED,
-                           plots_dir="visualization",
+                           plots_dir="local_visualization",
                            model_dir=model_dir,
-                           history_filename="history.pkl"
+                           save_best_model=False
                            # filename="model.pth",
                            )
     else:
