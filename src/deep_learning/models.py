@@ -188,7 +188,6 @@ class UNet(nn.Module):
             Performs the train for a given number of epochs.
         """
         logging.info(f"\n\tTRAINING... \n\ton device: {device} \n\twith loss: {self.criterion}\n")
-        # TODO: automatic model_dir
         if model_dir is None:
             model_dir = f"{config.DATA_ROOT_DIR}/trained_models/gen-model-{config.LOSS_TYPE.name}-ep{epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
 
@@ -281,21 +280,31 @@ class UNet(nn.Module):
                  plot_every_batch_with_metrics=False,
                  plot_last_batch_each_epoch=False,
                  epoch_number=None
-                 # high_mse_value=float('inf')
                  ):
+        logging.info(f"\t\tON DEVICE: {device} \t\tWITH LOSS: {self.criterion}\n")
         if not isinstance(self.criterion, Callable):
             raise TypeError(f"Loss function (criterion) has to be callable. It is {type(self.criterion)} which is not.")
+
         if compute_std and testloader.batch_size != 1:
             raise ValueError("The computations will result in wrong results! Batch size should be 1 if `compute_std=True`.")
+
         if epoch_number is None:
             epoch_number = "last_epoch"
         else:
             epoch_number = f"ep_{epoch_number}"
 
-        logging.info(f"\t\tON DEVICE: {device} \t\tWITH LOSS: {self.criterion}\n")
+        if testloader.batch_size != 1 and plots_path and plot_every_batch_with_metrics:
+            logging.error(
+                "Advised batch size when `plot_every_batch_with_metrics=True` is 1 `batch_size=1`. Then the metrics really shows how it behaves on the data")
 
+        # creating directory for saving predictions if needed
+        if save_preds_dir:
+            Path(save_preds_dir).mkdir(exist_ok=True, parents=True)
+        if plots_path:
+            Path(plots_path).mkdir(exist_ok=True)
+
+        # initializing variables
         n_steps = 0
-        n_skipped = 0
         utilized_metrics = {metric_name: self.available_metrics[metric_name] for metric_name in config.METRICS}
 
         if wanted_metrics:
@@ -303,11 +312,9 @@ class UNet(nn.Module):
                        metric_name in wanted_metrics}
 
         utilized_metrics = {f"val_{name}": metric for name, metric in utilized_metrics.items()}
-
-        if save_preds_dir:
-            Path(save_preds_dir).mkdir(exist_ok=True)
-
         metrics_values = {m_name: [] for m_name in utilized_metrics.keys()}
+
+        # actual evaluation
         with torch.no_grad():
             for batch_index, batch in enumerate(testloader):
                 # loading the input and target images
@@ -328,10 +335,15 @@ class UNet(nn.Module):
 
                     for img_index in range(current_batch_size):  # iterating over current batch size (number of images)
                         # retrieving the name of the current slice
-                        patient_slice_name = \
-                            testloader.dataset.images[img_index + batch_index * batch_size].split(path.sep)[-1]
-                        pred_filepath = path.join(save_preds_dir, patient_slice_name)
+                        patient_target_path = testloader.dataset.target_filepaths[img_index + batch_index * batch_size]
 
+                        # patient_name/slice_nr/mask.npy
+                        patient_name = patient_target_path.split(path.sep)[-3]
+                        slice_number = patient_target_path.split(path.sep)[-2]
+                        pred_dir_path = path.join(save_preds_dir, patient_name)
+                        Path(pred_dir_path).mkdir(exist_ok=True)
+
+                        pred_filepath = path.join(pred_dir_path, slice_number)
                         # saving the current image to the declared directory with the same name as the input image name
                         logging.debug(f"\t\t\tPrediction (batch={batch_index}, slice_index={img_index}) will be saved to: {pred_filepath}")
                         np.save(pred_filepath, predictions[img_index].cpu().numpy())
@@ -344,23 +356,20 @@ class UNet(nn.Module):
                 # plotting 
                 if plots_path:
                     if plot_every_batch_with_metrics:
-                        if testloader.batch_size == 1:
-                            # calculating the last metric values that might be needed as plot info
-                            descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
-                            current_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in
-                                                     metrics_values.keys()}
-                            batches_with_metrics_dirpath = path.join(plots_path, f"batches_with_metrics_{epoch_number}")
-                            Path(batches_with_metrics_dirpath).mkdir(exist_ok=True)
+                        # calculating the last metric values that might be needed as plot info
+                        descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
+                        current_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in
+                                                 metrics_values.keys()}
+                        batches_with_metrics_dirpath = path.join(plots_path, f"batches_with_metrics_{epoch_number}")
+                        Path(batches_with_metrics_dirpath).mkdir(exist_ok=True)
 
-                            filepath = path.join(batches_with_metrics_dirpath, f"slice{batch_index}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
+                        filepath = path.join(batches_with_metrics_dirpath, f"slice{batch_index}_{self.descriptive_metric}{descriptive_metric_value:.2f}.jpg")
 
-                            visualization.plot_all_modalities_and_target(
-                                images.to('cpu'), targets.to('cpu'), predictions.to('cpu').detach(),
-                                title=metrics.metrics_to_str(current_batch_metrics, sep=";"),
-                                savepath=filepath
-                                )
-                        else:
-                            raise logging.error("To have plot every batch with metrics (`plot_every_batch_with_metrics=True`) the in DataLoader `batch_size=1`")
+                        visualization.plot_all_modalities_and_target(
+                            images.to('cpu'), targets.to('cpu'), predictions.to('cpu').detach(),
+                            title=metrics.metrics_to_str(current_batch_metrics, sep=";"),
+                            savepath=filepath
+                            )
 
                 n_steps += 1
 
@@ -387,7 +396,7 @@ class UNet(nn.Module):
                 self.plot_distribution(metrics_values, histograms_dir_path)
                 logging.debug("\t\t\tAll distribution histograms saved.")
 
-        averaged_metrics, std_metrics = self._compute_average_std_metric(metrics_values, n_steps, n_skipped)
+        averaged_metrics, std_metrics = self._compute_average_std_metric(metrics_values, n_steps)
         metrics_str = metrics.metrics_to_str(averaged_metrics, sep='\t')
 
         logging.info(f"\t\tFor evaluation set: {metrics_str}\n")
@@ -414,26 +423,16 @@ class UNet(nn.Module):
             logging.debug(f"\t\t\t\tSaved histogram for {key} to {output_path}")
             
     @staticmethod
-    def _compute_average_std_metric(metrics_values, n_steps, n_skipped):
+    def _compute_average_std_metric(metrics_values, n_steps):
         """
-        Computes the average for each of the metrics using the sum and the number of steps. 
-        Treats specially the ZoomedSSIM metrics since there are potential skips. 
+        Computes the average for each of the metrics using the sum and the number of steps.
         """
         averaged_metrics = {}
         std_metrics = {}
+
         for metric_name, metric_values in metrics_values.items():
             numpy_metrics_values = np.array(metric_values)
-            if "zoomed_ssim" in metric_name:
-                if n_skipped == n_steps:
-                    logging.log(logging.WARNING, f"All the mask in the provided dataset are zeros."
-                                                 "\nNone ZoomedSSIM values were computed. Result assigned to None")
-
-                    averaged_metrics[metric_name] = None
-                denominator = n_steps - n_skipped
-            else:
-                denominator = n_steps
-
-            averaged_metrics[metric_name] = numpy_metrics_values.sum() / denominator
+            averaged_metrics[metric_name] = numpy_metrics_values.sum() / n_steps
             std_metrics[metric_name] = numpy_metrics_values.std()
 
         return averaged_metrics, std_metrics
