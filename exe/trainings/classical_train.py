@@ -16,7 +16,7 @@ if __name__ == '__main__':
     if config.LOCAL:
         train_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
         validation_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
-        pretrained_model_path = "C:\\Users\\JanFiszer\\repos\\fl-varying-normalization\\trained_models\\model-zscore-MSE_DSSIM-ep2-lr0.001-GN-2025-04-24-8h\\best_model.pth"
+        pretrained_model_path = "C:\\Users\\JanFiszer\\repos\\fl-varying-normalization\\trained_models\\st\\model-zscore-MSE_DSSIM-ep2-lr0.001-GN-2025-04-24-8h\\best_model.pth"
         num_epochs = config.N_EPOCHS_CENTRALIZED
 
     else:
