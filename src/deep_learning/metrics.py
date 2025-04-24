@@ -79,31 +79,34 @@ class GeneralizedTwoClassDice(Metric):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.add_state("dice_score", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("samples", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("dice_numerator", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("dice_denominator", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        # self.add_state("samples", default=torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, preds: torch.Tensor, targets: torch.Tensor):
         assert preds.shape == targets.shape
 
-        self.dice_score += self.compute_dice(preds, targets)
-        self.samples += preds.shape[0]  # TODO: good dividing
+        numerator, denominator = self.compute_dice_components(preds, targets)
+        self.dice_numerator += numerator
+        self.dice_denominator += denominator
+        # self.samples += preds.shape[0]  # TODO: good dividing
 
     def compute(self) -> torch.Tensor:
         """Compute the final generalized dice score."""
-        return self.dice_score / self.samples
+        return 2 * self.dice_numerator / self.dice_denominator
 
     @staticmethod
-    def compute_dice(preds, targets):
+    def compute_dice_components(preds, targets):
         num_samples_0 = (targets == 0).sum().item()
         num_samples_1 = (targets == 1).sum().item()
 
         weight_0 = 0 if num_samples_0 == 0 else 1 / (num_samples_0 ** 2)
         weight_1 = 0 if num_samples_1 == 0 else 1 / (num_samples_1 ** 2)
 
-        intersect = weight_1 * (preds * targets).sum() + weight_0 * ((1 - preds) * (1 - targets)).sum()
+        numerator = weight_1 * (preds * targets).sum() + weight_0 * ((1 - preds) * (1 - targets)).sum()
         denominator = weight_1 * (preds + targets).sum() + weight_0 * ((1 - preds) + (1 - targets)).sum()
 
-        return 2 * intersect / denominator
+        return numerator, denominator
 
 
 ####################

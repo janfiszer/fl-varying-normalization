@@ -87,7 +87,7 @@ if __name__ == '__main__':
         unet.perform_train(trainloader, optimizer,
                            validationloader=valloader,
                            epochs=config.N_EPOCHS_CENTRALIZED,
-                           plots_dir="local_visualization",
+                           plots_dir="new_class_dice_local_visualization",
                            model_dir=model_dir,
                            save_best_model=False
                            # filename="model.pth",

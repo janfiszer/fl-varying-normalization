@@ -9,6 +9,8 @@ from configs import config, enums
 from src.deep_learning import metrics, datasets, models
 from torch.utils.data import DataLoader
 
+from src.utils.files_operations import get_youngest_dir
+
 
 class DifferentTranslationError(Exception):
     pass
@@ -24,7 +26,7 @@ def import_from_filepath(to_import_filepath):
 
 def perform_evaluate(batch_size, test_dir, model_path):
     model_dir = os.path.dirname(model_path)
-    representative_test_dir = test_dir.split(os.path.sep)[-2]
+    representative_test_dir = get_youngest_dir(test_dir)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -75,7 +77,8 @@ if __name__ == '__main__':
         config_path = os.path.join(os.path.dirname(model_path), "config.py")
 
     model_dir = os.path.dirname(model_path)
-    representative_test_dir = test_dir.split(os.path.sep)[-2]
+    representative_test_dir = get_youngest_dir(test_dir)
+
 
     logging.info(f"Model dir is: {model_dir}")
 
