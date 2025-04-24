@@ -113,12 +113,6 @@ class UNet(nn.Module):
         epoch_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
         total_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
 
-        # def get_metric_device(metric):
-        #     try:
-        #         return next(metric.parameters()).device
-        #     except StopIteration:
-        #         return next(metric.buffers()).device
-        # import types
         # print('debugging metric device')
         # for metric_name, metric_obj in utilized_metrics.items():
         #     # if not isinstance(metric_obj, types.FunctionType):
@@ -245,7 +239,7 @@ class UNet(nn.Module):
 
                 if save_best_model:
                     if val_metric["val_loss"] < best_loss:
-                        logging.debug(
+                        logging.info(
                             f"\tModel form epoch {epoch} taken as the best one.\n\tIts loss {val_metric['val_loss']:.3f} is better than current best loss {best_loss:.3f}.")
                         best_loss = val_metric["val_loss"]
                         best_model = self.state_dict()
@@ -298,7 +292,7 @@ class UNet(nn.Module):
         else:
             epoch_number = f"ep_{epoch_number}"
 
-        logging.info(f"\t\tON DEVICE: {device} \n\t\t\t\tWITH LOSS: {self.criterion}\n")
+        logging.info(f"\t\tON DEVICE: {device} \t\tWITH LOSS: {self.criterion}\n")
 
         n_steps = 0
         n_skipped = 0
@@ -418,6 +412,7 @@ class UNet(nn.Module):
             plt.savefig(output_path)
             plt.close()  # Close the figure to free up memory
             logging.debug(f"\t\t\t\tSaved histogram for {key} to {output_path}")
+            
     @staticmethod
     def _compute_average_std_metric(metrics_values, n_steps, n_skipped):
         """

@@ -49,7 +49,7 @@ class GeneralizedDiceLoss(torch.nn.Module):
 
 
 class LossGeneralizedTwoClassDice(torch.nn.Module):
-    def __init__(self, device, binary_crossentropy: bool = False):
+    def __init__(self, device: str, binary_crossentropy: bool = False):
         super(LossGeneralizedTwoClassDice, self).__init__()
         self.dice = GeneralizedTwoClassDice().to(device)
         self.binary_crossentropy = binary_crossentropy
@@ -70,7 +70,10 @@ class LossGeneralizedTwoClassDice(torch.nn.Module):
         return total_loss
 
     def __repr__(self):
-        return "GeneralizedDiceLoss"
+        if self.binary_crossentropy:
+            return f"LossGeneralizedTwoClassDice with BCE"
+        else:
+            return "LossGeneralizedTwoClassDice"
 
 
 class GeneralizedTwoClassDice(Metric):
@@ -93,10 +96,6 @@ class GeneralizedTwoClassDice(Metric):
     def compute(self) -> torch.Tensor:
         """Compute the final generalized dice score."""
         return self.dice_score / self.samples
-
-    def reset(self):
-        self.dice_score = torch.tensor(0.0)
-        self.samples = torch.tensor(0)
 
     @staticmethod
     def compute_dice(preds, targets):

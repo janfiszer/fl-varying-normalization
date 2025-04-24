@@ -43,6 +43,7 @@ if __name__ == '__main__':
 
         num_workers = config.NUM_WORKERS
         logging.info(f"Training with {num_workers} num_workers.")
+        logging.info(f"Batch size for validation set {val_batch_size}.")
 
         trainloader = DataLoader(train_dataset,
                                  batch_size=config.BATCH_SIZE,
@@ -57,8 +58,7 @@ if __name__ == '__main__':
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    # criterion = metrics.BinaryDiceLoss()
-    criterion = metrics.LossGeneralizedTwoClassDice(device)  # TODO: binarize threshold
+    criterion = metrics.LossGeneralizedTwoClassDice(device, binary_crossentropy=True)
 
     unet = UNet(criterion).to(device)
     optimizer = torch.optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
@@ -91,5 +91,5 @@ if __name__ == '__main__':
                            model_save_filename="last_epoch_model.pth",
                            model_dir=model_dir,
                            history_filename="history.pkl",
-                           plots_dir="predictions",
+                           plots_dir="visualization",
                            save_best_model=True)
