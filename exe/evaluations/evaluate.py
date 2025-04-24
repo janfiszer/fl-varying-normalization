@@ -37,7 +37,7 @@ def perform_evaluate(batch_size, test_dir, model_path):
 
     testloader = DataLoader(testset, batch_size=batch_size, shuffle=False)
 
-    criterion = metrics.loss_generalized_dice
+    criterion = metrics.LossGeneralizedTwoClassDice(device, binary_crossentropy=True)
     logging.info(f"Taken criterion is: {criterion}")
     unet = models.UNet(criterion).to(device)
 

@@ -36,7 +36,7 @@ if __name__ == '__main__':
     # setting dataloaders
     if config.LOCAL:
         trainloader = DataLoader(train_dataset,
-                                 batch_size=12,
+                                 batch_size=4,
                                  shuffle=True)
         valloader = DataLoader(validation_dataset,
                                batch_size=2,

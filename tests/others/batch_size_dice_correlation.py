@@ -8,7 +8,7 @@ from exe.evaluations import evaluate
 import matplotlib.pyplot as plt
 
 
-def visulize_relation(metrics_dict):
+def visualize_relation(metrics_dict):
     all_metrics = list(next(iter(metrics_dict.values())).keys())
 
     # Step 2: Prepare data for plotting
@@ -47,12 +47,12 @@ if __name__ == "__main__":
     batch_size_to_metrics = {}
     batch_size_to_std = {}
 
-    for batch_size in range(1, 25):
+    for batch_size in range(1, 13):
         logging.info(f"Evaluating for: {batch_size}")
         metrics = evaluate.perform_evaluate(batch_size, test_dir, model_path)
         batch_size_to_metrics[batch_size] = metrics
 
-    visulize_relation(batch_size_to_metrics)
+    visualize_relation(batch_size_to_metrics)
 
     with open("metrics_to_batch_size.pkl", "wb") as file:
         pickle.dump(batch_size_to_metrics, file)

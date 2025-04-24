@@ -3,9 +3,6 @@ from typing import List
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
-from torch import Tensor
-
-import math
 
 
 def plot_all_modalities_and_target(
@@ -88,6 +85,86 @@ def plot_all_modalities_and_target(
 
     if title:
         fig.suptitle(title)
+
+    if savepath:
+        plt.savefig(savepath)
+    else:
+        plt.show()
+
+    plt.close()
+
+
+def plot_learning_curves(loss_histories, labels, colors=None, linetypes=None, title=None, ylabel="Loss value (MSE+DSSIM)", xlabel="Global rounds", ylim=None, figsize=None, legend=True, savepath=None, markers=None, linewidths=None, gridstyle=None, markersize=3, yscale="linear", xticks=None, yticks=None):
+    if figsize:
+        plt.figure(figsize=figsize)
+
+    if ylim:
+        plt.ylim(ylim)
+
+    linestyle = '-'
+    marker = None
+    linewidth = 2
+
+    for index, loss_values in enumerate(loss_histories):
+        epochs = range(1, len(loss_values) + 1)
+
+        label=labels[index]
+
+        if linetypes:
+            linestyle = linetypes[index]
+        if markers:
+            marker = markers[index]
+        if linewidths:
+            linewidth = linewidths[index]
+
+        if colors:
+            plt.plot(epochs, loss_values, label=label, linestyle=linestyle, marker=marker, markersize=markersize, linewidth=linewidth, color=colors[index])
+        else:
+            plt.plot(epochs, loss_values, label=label, linestyle=linestyle, marker=marker, markersize=markersize, linewidth=linewidth)
+
+    if title is not None:
+        plt.title(title)
+
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.yscale(yscale)
+    if legend:
+        plt.legend()
+
+    if gridstyle:
+        plt.grid(linestyle=gridstyle)
+
+    if savepath:
+        plt.savefig(savepath)
+        plt.close()
+
+
+def plot_history(network_history, savepath=None):
+    epochs = range(len(network_history["loss"]))
+
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+
+    axs[0,0].set_xlabel('Epochs')
+    axs[0,0].set_ylabel('Loss')
+    axs[0,0].plot(epochs, network_history['loss'])
+    axs[0,0].plot(epochs, network_history['val_loss'])
+
+    axs[1,0].set_xlabel('Epochs')
+    axs[1,0].set_ylabel('2ClassDice')
+    axs[1,0].plot(epochs, network_history['two_class_generalized_dice'])
+    axs[1,0].plot(epochs, network_history['val_two_class_generalized_dice'])
+
+    axs[1,1].set_xlabel('Epochs')
+    axs[1,1].set_ylabel('Torchmetrics DICE')
+    axs[1,1].plot(epochs, network_history['generalized_dice_torchmetrics'])
+    axs[1,1].plot(epochs, network_history['val_generalized_dice_torchmetrics'])
+
+    axs[0,1].set_xlabel('Epochs')
+    axs[0,1].set_ylabel('Function Dice')
+    axs[0,1].plot(epochs, network_history['old_dice_generalized'])
+    axs[0,1].plot(epochs, network_history['val_old_dice_generalized'])
+
+    plt.legend(['Training', 'Validation'])
 
     if savepath:
         plt.savefig(savepath)
