@@ -1,10 +1,5 @@
 from typing import Dict, List, Any, Optional, Sequence, Tuple, Union, Literal
 
-from torch import Tensor
-from torchmetrics.functional.segmentation.generalized_dice import _generalized_dice_validate_args, \
-    _generalized_dice_update, _generalized_dice_compute
-from torchmetrics.image import StructuralSimilarityIndexMeasure
-
 from configs import config
 from torchmetrics.metric import Metric
 from torchmetrics.segmentation import GeneralizedDiceScore
@@ -91,7 +86,7 @@ class GeneralizedTwoClassDice(Metric):
         assert preds.shape == targets.shape
 
         self.dice_score += self.compute_dice(preds, targets)
-        self.samples += preds.shape[0]
+        self.samples += preds.shape[0]  # TODO: good dividing
 
     def compute(self) -> torch.Tensor:
         """Compute the final generalized dice score."""
