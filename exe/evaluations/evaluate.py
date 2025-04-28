@@ -37,9 +37,9 @@ def perform_evaluate(batch_size, test_dir, model_path):
 
     testloader = DataLoader(testset, batch_size=batch_size, shuffle=False)
 
-    criterion = metrics.LossGeneralizedTwoClassDice(device, binary_crossentropy=True)
+    criterion = metrics.LossGeneralizedTwoClassDice(device)
     logging.info(f"Taken criterion is: {criterion}")
-    unet = models.UNet(criterion).to(device)
+    unet = models.UNet(criterion, descriptive_metric="gen_dice").to(device)
 
     try:
         logging.info(f"Loading model from: {model_path}")
@@ -58,7 +58,7 @@ def perform_evaluate(batch_size, test_dir, model_path):
     return unet.evaluate(testloader,
                          save_preds_dir=save_preds_dir,
                          compute_std=False,
-                         plots_path=os.path.join(model_dir, "eval_visualization"),
+                         plots_path=os.path.join(model_dir, "eval_visualization", representative_test_dir),
                          plot_every_batch_with_metrics=True,
                          plot_metrics_distribution=True)
 

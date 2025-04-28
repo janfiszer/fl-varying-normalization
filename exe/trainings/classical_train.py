@@ -64,10 +64,10 @@ if __name__ == '__main__':
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     representative_test_dir = get_youngest_dir(train_directory)
-    model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-{config.LOSS_TYPE.name}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
+    model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
     Path(model_dir).mkdir(parents=True, exist_ok=True)
 
-    criterion = metrics.LossGeneralizedTwoClassDice(device, binary_crossentropy=True)
+    criterion = metrics.LossGeneralizedTwoClassDice(device)
     unet = UNet(criterion).to(device)
 
     if pretrained_model_path:
