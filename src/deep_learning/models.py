@@ -53,7 +53,7 @@ class UNet(nn.Module):
         self.available_metrics = {"loss": self.criterion,
                                   "mse": mse,
                                   "generalized_dice_torchmetrics": generalized_dice_torchmetrics,
-                                  "two_class_generalized_dice": two_class_generalized_dice,
+                                  "gen_dice": two_class_generalized_dice,
                                   # "dice_classification": dice_score,
                                   "old_dice_generalized": old_dice_generalized,
                                   "dice_2_class": dice_2_class,
@@ -112,12 +112,6 @@ class UNet(nn.Module):
 
         epoch_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
         total_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
-
-        # print('debugging metric device')
-        # for metric_name, metric_obj in utilized_metrics.items():
-        #     # if not isinstance(metric_obj, types.FunctionType):
-        #     print(metric_name)
-        #     print(metric_obj.device_helper.device)
 
         n_batches = len(trainloader)
 
@@ -297,7 +291,7 @@ class UNet(nn.Module):
         if save_preds_dir:
             Path(save_preds_dir).mkdir(exist_ok=True, parents=True)
         if plots_path:
-            Path(plots_path).mkdir(exist_ok=True)
+            Path(plots_path).mkdir(exist_ok=True, parents=True)
 
         # initializing variables
         n_steps = 0
