@@ -55,7 +55,7 @@ class UNet(nn.Module):
                                   # "jaccard": jaccard_index
                                   }
 
-        self.inc = (DoubleConv(3, 64, normalization))
+        self.inc = (DoubleConv(3, 64, normalization, dropout_rate=config.DROPOUT_RATE))
         self.down1 = (Down(64, 128, normalization))
         self.down2 = (Down(128, 256, normalization))
         self.down3 = (Down(256, 512, normalization))
@@ -425,7 +425,7 @@ class UNet(nn.Module):
 
 
 class DoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels, normalization, mid_channels=None):
+    def __init__(self, in_channels, out_channels, normalization, mid_channels=None, dropout_rate=0.0):
         super().__init__()
 
         if not mid_channels:
@@ -444,6 +444,7 @@ class DoubleConv(nn.Module):
 
         self.conv1 = nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False)
         self.relu = nn.ReLU(inplace=True)
+        self.dropout = nn.Dropout2d(dropout_rate) if dropout_rate > 0 else None
         self.conv2 = nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False)
 
     def forward(self, x):
@@ -451,6 +452,9 @@ class DoubleConv(nn.Module):
         if self.norm1:
             x = self.norm1(x)
         x = self.relu(x)
+
+        if self.dropout:
+            x = self.dropout(x)
 
         x = self.conv2(x)
         if self.norm2:
@@ -467,7 +471,7 @@ class Down(nn.Module):
         super().__init__()
         self.maxpool_conv = nn.Sequential(
             nn.MaxPool2d(2),
-            DoubleConv(in_channels, out_channels, normalization)
+            DoubleConv(in_channels, out_channels, normalization, dropout_rate=config.DROPOUT_RATE)
         )
 
     def forward(self, x):
