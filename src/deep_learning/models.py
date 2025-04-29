@@ -225,7 +225,7 @@ class UNet(nn.Module):
                 if save_best_model:
                     if val_metric["val_loss"] < best_loss:
                         logging.info(
-                            f"\tModel form epoch {epoch} taken as the best one.\n\tIts loss {val_metric['val_loss']:.3f} is better than current best loss {best_loss:.3f}.")
+                            f"\tModel form epoch {epoch+1} taken as the best one. Its loss {val_metric['val_loss']:.3f} is better than current best loss {best_loss:.3f}.")
                         best_loss = val_metric["val_loss"]
                         best_model = self.state_dict()
 
