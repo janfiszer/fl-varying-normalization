@@ -14,23 +14,23 @@ if __name__ == '__main__':
     # setting default parameters
     pretrained_model_path = None
     if config.LOCAL:
-        train_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
-        validation_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
+        train_directories = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small_only_mask"
+        validation_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small_no_mask"
         pretrained_model_path = "C:\\Users\\JanFiszer\\repos\\fl-varying-normalization\\trained_models\\st\\model-zscore-MSE_DSSIM-ep2-lr0.001-GN-2025-04-24-8h\\best_model.pth"
         num_epochs = config.N_EPOCHS_CENTRALIZED
 
     else:
         data_dir = sys.argv[1]
-        train_directory = os.path.join(data_dir, "train")
+        train_directories = os.path.join(data_dir, "train")
         validation_directory = os.path.join(data_dir, "validation")
-        representative_test_dir = train_directory[0].split(os.path.sep)[-2]
+        representative_test_dir = train_directories[0].split(os.path.sep)[-2]
         if len(sys.argv) > 2:
             num_epochs = int(sys.argv[2])
         else:
             num_epochs = config.N_EPOCHS_CENTRALIZED
 
     # creating datasets
-    train_dataset = SegmentationDataset2DSlices(train_directory, config.USED_MODALITIES, config.MASK_DIR, binarize_mask=True)
+    train_dataset = SegmentationDataset2DSlices(train_directories, config.USED_MODALITIES, config.MASK_DIR, binarize_mask=True)
     validation_dataset = SegmentationDataset2DSlices(validation_directory, config.USED_MODALITIES, config.MASK_DIR, binarize_mask=True)
 
     # setting dataloaders
@@ -39,7 +39,7 @@ if __name__ == '__main__':
                                  batch_size=4,
                                  shuffle=True)
         valloader = DataLoader(validation_dataset,
-                               batch_size=2,
+                               batch_size=1,
                                shuffle=True)
     else:
         if config.PLOT_BATCH_WITH_METRICS:
@@ -63,7 +63,12 @@ if __name__ == '__main__':
                                pin_memory=True)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    representative_test_dir = get_youngest_dir(train_directory)
+
+    if len(train_directories) > 1:
+        representative_test_dir = "all"
+    else:
+        representative_test_dir = get_youngest_dir(train_directories[0])
+
     model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
     Path(model_dir).mkdir(parents=True, exist_ok=True)
 
@@ -87,7 +92,7 @@ if __name__ == '__main__':
         unet.perform_train(trainloader, optimizer,
                            validationloader=valloader,
                            epochs=config.N_EPOCHS_CENTRALIZED,
-                           plots_dir="new_class_dice_local_visualization",
+                           plots_dir="new_metrics_local_visualization",
                            model_dir=model_dir,
                            save_best_model=False
                            # filename="model.pth",
