@@ -11,7 +11,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchmetrics.classification import BinaryJaccardIndex
 
 from configs import config, creds
 from src.deep_learning import metrics
@@ -22,14 +21,11 @@ batch_print_freq = config.BATCH_PRINT_FREQ
 
 mse = nn.MSELoss()
 
-old_dice_generalized = metrics.generalized_dice
-two_class_generalized_dice = metrics.GeneralizedTwoClassDice().to(device)
-dice_2_class = metrics.dice_2_class
-# dice_score = Dice().to(device)
-generalized_dice_torchmetrics = metrics.GeneralizedDiceScore(1, include_background=True).to(device)
-# dice_score = Dice().to(device)
-jaccard_index = BinaryJaccardIndex().to(device)
-
+generalized_dice = metrics.GeneralizedTwoClassDice().to(device)
+# smoothed_dice = metrics.BinaryDice().to(device)
+binarized_smoothed_dice = metrics.BinaryDice(binarize_threshold=0.5).to(device)
+# jaccard_index = metrics.JaccardIndex().to(device)
+binarized_jaccard_index = metrics.JaccardIndex(binarize_threshold=0.5).to(device)
 
 class UNet(nn.Module):
     """
@@ -52,12 +48,12 @@ class UNet(nn.Module):
 
         self.available_metrics = {"loss": self.criterion,
                                   "mse": mse,
-                                  "generalized_dice_torchmetrics": generalized_dice_torchmetrics,
-                                  "gen_dice": two_class_generalized_dice,
-                                  # "dice_classification": dice_score,
-                                  "old_dice_generalized": old_dice_generalized,
-                                  "dice_2_class": dice_2_class,
-                                  "jaccard": jaccard_index}
+                                  "gen_dice": generalized_dice,
+                                  # "smoothed_dice": smoothed_dice,
+                                  "binarized_smoothed_dice": binarized_smoothed_dice,
+                                  "binarized_jaccard_index": binarized_jaccard_index,
+                                  # "jaccard": jaccard_index
+                                  }
 
         self.inc = (DoubleConv(3, 64, normalization))
         self.down1 = (Down(64, 128, normalization))
@@ -140,7 +136,7 @@ class UNet(nn.Module):
                 if metric_name == "loss":
                     metric_value = loss
                 else:
-                    metric_value = metric_object(predictions, targets.int())
+                    metric_value = metric_object(predictions, targets)
 
                 total_metrics[metric_name] += metric_value.item()
                 epoch_metrics[metric_name] += metric_value.item()

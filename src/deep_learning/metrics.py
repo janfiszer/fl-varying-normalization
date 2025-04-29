@@ -15,34 +15,6 @@ def metrics_to_str(metrics: Dict[str, List[float]], starting_symbol: str = "", s
     return metrics_epoch_str
 
 
-class GeneralizedDiceLoss(torch.nn.Module):
-    def __init__(self, num_classes: int, device: str, binary_crossentropy: bool = False):
-        super(GeneralizedDiceLoss, self).__init__()
-        self.dice = GeneralizedDiceScore(num_classes, per_class=True).to(device)
-        self.binary_crossentropy = binary_crossentropy
-
-        if binary_crossentropy:
-            self.bce_loss = torch.nn.BCELoss().to(device)
-
-    def forward(self, predict, target):
-        assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
-
-        # TODO: dice=0 when no target ALWAYS...
-        dice_scores = self.dice(predict, target)
-        loss = 1 - dice_scores.mean()
-
-        if self.binary_crossentropy:
-            bce_loss = self.bce_loss(predict, target.float())
-            total_loss = loss + bce_loss
-        else:
-            total_loss = loss
-
-        return total_loss
-
-    def __repr__(self):
-        return "GeneralizedDiceLoss"
-
-
 class LossGeneralizedTwoClassDice(torch.nn.Module):
     def __init__(self, device: str, binary_crossentropy: bool = False):
         super(LossGeneralizedTwoClassDice, self).__init__()
@@ -72,8 +44,6 @@ class LossGeneralizedTwoClassDice(torch.nn.Module):
 
 
 class GeneralizedTwoClassDice(Metric):
-    # GeneralizedDice from torchmetrics is using this and seems to be nice and applicable here too
-    # but dunno how to do it...
     full_state_update: bool = False
 
     def __init__(self, **kwargs):
@@ -81,7 +51,6 @@ class GeneralizedTwoClassDice(Metric):
 
         self.add_state("dice_numerator", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("dice_denominator", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        # self.add_state("samples", default=torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, preds: torch.Tensor, targets: torch.Tensor):
         assert preds.shape == targets.shape
@@ -89,7 +58,6 @@ class GeneralizedTwoClassDice(Metric):
         numerator, denominator = self.compute_dice_components(preds, targets)
         self.dice_numerator += numerator
         self.dice_denominator += denominator
-        # self.samples += preds.shape[0]  # TODO: good dividing
 
     def compute(self) -> torch.Tensor:
         """Compute the final generalized dice score."""
@@ -108,10 +76,127 @@ class GeneralizedTwoClassDice(Metric):
 
         return numerator, denominator
 
+    def __repr__(self):
+        return f"GeneralizedTwoClassDice"
+
+
+class BinaryDice(Metric):
+    # full_state_update: bool = False
+
+    def __init__(self, smooth=1.0, binarize_threshold=None):
+        super(BinaryDice, self).__init__()
+        self.add_state("dice_numerator", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("dice_denominator", default=torch.tensor(0.0), dist_reduce_fx="sum")
+
+        self.smooth = smooth
+        self.binarize_threshold = binarize_threshold
+        # self.add_state("smooth", default=torch.tensor(smooth))
+        #
+        # if binarize_threshold:
+        #     self.add_state("binarize_threshold", default=torch.tensor(binarize_threshold))
+        # else:
+        #     self.binarize_threshold = None
+
+    def update(self, preds: torch.Tensor, targets: torch.Tensor):
+        assert preds.shape == targets.shape
+
+        numerator, denominator = self.compute_dice_components(preds, targets, self.binarize_threshold)
+        self.dice_numerator += numerator
+        self.dice_denominator += denominator
+
+    def compute(self) -> torch.Tensor:
+        """Compute the final generalized dice score."""
+        return self._compute_smoothed_dice(self.dice_numerator, self.dice_denominator, self.smooth)
+
+    def __repr__(self):
+        return f"BinaryDice(smooth={self.smooth}, binarize_threshold={self.binarize_threshold})"
+
+    @staticmethod
+    def _compute_smoothed_dice(dice_numerator, dice_denominator, smooth):
+        return (2 * dice_numerator + smooth) / (dice_denominator + smooth)
+
+    @staticmethod
+    def compute_dice_components(predict, target, binarize_threshold=None):
+        if binarize_threshold:
+            predict = torch.where(predict > binarize_threshold, 1, 0)
+
+        intersection = torch.sum(predict * target)
+        denominator = torch.sum(predict) + torch.sum(target)
+
+        return intersection, denominator
+
+
+class JaccardIndex(Metric):
+    # TODO: How ssim made it work with this
+    # full_state_update: bool = False
+
+    def __init__(self, smooth=1.0, binarize_threshold=None):
+        super(JaccardIndex, self).__init__()
+        self.add_state("intersection", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("union", default=torch.tensor(0.0), dist_reduce_fx="sum")
+
+        self.smooth = smooth
+        self.binarize_threshold = binarize_threshold
+
+    def update(self, preds: torch.Tensor, targets: torch.Tensor):
+        assert preds.shape == targets.shape
+
+        intersection, denominator = self.compute_jaccard_components(preds, targets, self.binarize_threshold)
+        self.intersection += intersection  # TODO: check
+        self.union += denominator - intersection
+
+    def compute(self) -> torch.Tensor:
+        """Compute the final generalized dice score."""
+        return self._compute_jaccard(self.intersection, self.union, self.smooth)
+
+    @staticmethod
+    def _compute_jaccard(intersection, union, smooth):
+        return (intersection + smooth) / (union + smooth)
+
+    @staticmethod
+    def compute_jaccard_components(predict, target, binarize_threshold):
+        if binarize_threshold:
+            predict = torch.where(predict > binarize_threshold, 1, 0)
+
+        intersection = torch.sum(predict * target)
+        denominator = torch.sum(predict) + torch.sum(target)
+
+        return intersection, denominator
+
+    def __repr__(self):
+        return f"BinaryDice(smooth={self.smooth}, binarize_threshold={self.binarize_threshold})"
 
 ####################
 # OLD SEGMENTATION #
 ####################
+
+class GeneralizedDiceLoss(torch.nn.Module):
+    def __init__(self, num_classes: int, device: str, binary_crossentropy: bool = False):
+        super(GeneralizedDiceLoss, self).__init__()
+        self.dice = GeneralizedDiceScore(num_classes, per_class=True).to(device)
+        self.binary_crossentropy = binary_crossentropy
+
+        if binary_crossentropy:
+            self.bce_loss = torch.nn.BCELoss().to(device)
+
+    def forward(self, predict, target):
+        assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
+
+        # TODO: dice=0 when no target ALWAYS...
+        dice_scores = self.dice(predict, target)
+        loss = 1 - dice_scores.mean()
+
+        if self.binary_crossentropy:
+            bce_loss = self.bce_loss(predict, target.float())
+            total_loss = loss + bce_loss
+        else:
+            total_loss = loss
+
+        return total_loss
+
+    def __repr__(self):
+        return "GeneralizedDiceLoss"
+
 
 class BinaryDiceLoss(torch.nn.Module):
     """Dice loss of binary class
@@ -161,22 +246,6 @@ class BinaryDiceLoss(torch.nn.Module):
             return "Dice with BCE LOSS"
         else:
             return "Dice LOSS"
-
-
-class BinaryDice(torch.nn.Module):
-    def __init__(self, smooth=1):
-        super(BinaryDice, self).__init__()
-        self.smooth = smooth
-
-    def forward(self, predict, target):
-        intersection = torch.sum(predict * target)
-        sum_pred_target = torch.sum(predict) + torch.sum(target)
-
-        dice_coefficient = (2 * intersection + self.smooth) / (sum_pred_target + self.smooth)
-        return dice_coefficient
-
-    def __repr__(self):
-        return "BinaryDice"
 
 
 def weighted_BCE(predict, target):
