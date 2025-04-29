@@ -24,31 +24,36 @@ class SegmentationDataset2DSlices(Dataset):
     """
     EPS = 1e-6
 
-    def __init__(self, data_path: str, modalities_names: List, mask_dir: str, image_size=None, binarize_mask=False):
-        # TODO: consider list instead of one datapath
+    def __init__(self, data_paths: str, modalities_names: List, mask_dir: str, image_size=None, binarize_mask=False):
         # declaring booleans
         self.binarize_mask = binarize_mask
         self.mask_dir = mask_dir
         self.image_size = image_size
         self.modalities_names = modalities_names
 
-        self.modalities_filepaths, self.target_filepaths = self.load_full_paths(data_path)
+        self.modalities_filepaths, self.target_filepaths = self.load_full_paths(data_paths)
+
+        logging.info(f"Dataset 'SegmentationDataset2DSlices' loaded {len(self.target_filepaths)} filepaths from {data_paths}.")
 
     def __len__(self):
         return len(self.target_filepaths)
 
-    def load_full_paths(self, data_path):
+    def load_full_paths(self, data_paths):
         modalities_filepaths = {modality: [] for modality in self.modalities_names}
         target_filepaths = []
 
-        for patient_dir in os.listdir(data_path):
-            patient_fullpath = os.path.join(data_path, patient_dir)
-            for slice_dir in os.listdir(patient_fullpath):
-                slice_dir_fullpath = os.path.join(patient_fullpath, slice_dir)
-                for modality in self.modalities_names:
-                    slice_file_fullpath = os.path.join(slice_dir_fullpath, f"{modality}{TransformVolumesToNumpySlices.SLICES_FILE_FORMAT}")
-                    modalities_filepaths[modality].append(slice_file_fullpath)
-                target_filepaths.append(os.path.join(slice_dir_fullpath, f"{self.mask_dir}{TransformVolumesToNumpySlices.SLICES_FILE_FORMAT}"))
+        if not isinstance(data_paths, List):
+            data_paths = [data_paths]
+
+        for data_path in data_paths:
+            for patient_dir in os.listdir(data_path):
+                patient_fullpath = os.path.join(data_path, patient_dir)
+                for slice_dir in os.listdir(patient_fullpath):
+                    slice_dir_fullpath = os.path.join(patient_fullpath, slice_dir)
+                    for modality in self.modalities_names:
+                        slice_file_fullpath = os.path.join(slice_dir_fullpath, f"{modality}{TransformVolumesToNumpySlices.SLICES_FILE_FORMAT}")
+                        modalities_filepaths[modality].append(slice_file_fullpath)
+                    target_filepaths.append(os.path.join(slice_dir_fullpath, f"{self.mask_dir}{TransformVolumesToNumpySlices.SLICES_FILE_FORMAT}"))
 
         # checking if all the lists are the same size
         for modality in self.modalities_names:
