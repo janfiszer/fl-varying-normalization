@@ -22,7 +22,7 @@ if __name__ == '__main__':
     else:
         data_dir = sys.argv[1]
         train_directories = os.path.join(data_dir, "train")
-        validation_directory = os.path.join(data_dir, "validation")
+        validation_directory = os.path.join(data_dir, "test")
         representative_test_dir = train_directories[0].split(os.path.sep)[-2]
         if len(sys.argv) > 2:
             num_epochs = int(sys.argv[2])
@@ -64,7 +64,7 @@ if __name__ == '__main__':
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    if len(train_directories) > 1:
+    if isinstance(train_directories, list) > 1:
         representative_test_dir = "all"
     else:
         representative_test_dir = get_youngest_dir(train_directories[0])
