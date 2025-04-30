@@ -67,7 +67,7 @@ if __name__ == '__main__':
     if isinstance(train_directories, list) > 1:
         representative_test_dir = "all"
     else:
-        representative_test_dir = get_youngest_dir(train_directories[0])
+        representative_test_dir = get_youngest_dir(train_directories)
 
     model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
     Path(model_dir).mkdir(parents=True, exist_ok=True)
