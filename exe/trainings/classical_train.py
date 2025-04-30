@@ -1,14 +1,15 @@
 import os
-import sys
+# import sys
 from shutil import copy2
 from pathlib import Path
 import torch
+from torch.utils.data import DataLoader
 
 from src.deep_learning.datasets import *
 from src.deep_learning.models import *
 from src.utils.files_operations import get_youngest_dir
+from configs.arg_parser import parse_args
 
-from torch.utils.data import DataLoader
 
 if __name__ == '__main__':
     # setting default parameters
@@ -20,14 +21,15 @@ if __name__ == '__main__':
         num_epochs = config.N_EPOCHS_CENTRALIZED
 
     else:
-        data_dir = sys.argv[1]
+        config_dict = parse_args()
+        data_dir = config_dict["DATA_DIR"]
         train_directories = os.path.join(data_dir, "train")
         validation_directory = os.path.join(data_dir, "test")
-        representative_test_dir = train_directories[0].split(os.path.sep)[-2]
-        if len(sys.argv) > 2:
-            num_epochs = int(sys.argv[2])
-        else:
-            num_epochs = config.N_EPOCHS_CENTRALIZED
+        num_epochs = config_dict["N_EPOCHS_CENTRALIZED"]
+        # if len(sys.argv) > 2:
+        #     num_epochs = int(sys.argv[2])
+        # else:
+        #     num_epochs = config.N_EPOCHS_CENTRALIZED
 
     # creating datasets
     train_dataset = SegmentationDataset2DSlices(train_directories, config.USED_MODALITIES, config.MASK_DIR, binarize_mask=True)
@@ -45,14 +47,14 @@ if __name__ == '__main__':
         if config.PLOT_BATCH_WITH_METRICS:
             val_batch_size = 1
         else:
-            val_batch_size = config.BATCH_SIZE
+            val_batch_size = config_dict['BATCH_SIZE']
 
         num_workers = config.NUM_WORKERS
         logging.info(f"Training with {num_workers} num_workers.")
         logging.info(f"Batch size for validation set {val_batch_size}.")
 
         trainloader = DataLoader(train_dataset,
-                                 batch_size=config.BATCH_SIZE,
+                                 batch_size=config_dict['BATCH_SIZE'],
                                  shuffle=True,
                                  num_workers=config.NUM_WORKERS,
                                  pin_memory=True)
@@ -67,9 +69,9 @@ if __name__ == '__main__':
     if isinstance(train_directories, list) > 1:
         representative_test_dir = "all"
     else:
-        representative_test_dir = get_youngest_dir(train_directories[0])
+        representative_test_dir = get_youngest_dir(train_directories)
 
-    model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
+    model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-ep{num_epochs}-lr{config_dict['LEARNING_RATE']}-{config.NORMALIZATION.name}-{config.now.date()}" + "-{:d}.{:02d}".format(config.now.hour, config.now.minute)
     Path(model_dir).mkdir(parents=True, exist_ok=True)
 
     criterion = metrics.LossGeneralizedTwoClassDice(device)
@@ -79,7 +81,7 @@ if __name__ == '__main__':
         unet.load_state_dict(torch.load(pretrained_model_path, map_location=torch.device('cpu')))
         model_dir = os.path.dirname(pretrained_model_path)
 
-    optimizer = torch.optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
+    optimizer = torch.optim.Adam(unet.parameters(), lr=config_dict['LEARNING_RATE'])
 
     config_path = "./configs/config.py"
 
