@@ -1,27 +1,25 @@
 #!/bin/bash -l
 
 ## Nazwa zlecenia
-#SBATCH -J TDtsTest
+#SBATCH -J SngTrain
 # Liczba alokowanych wÄ™zĹ‚Ăłw
 #SBATCH -n 1
 ## Liczba zadaĹ„ per wÄ™zeĹ‚ (domyĹ›lnie jest to liczba alokowanych rdzeni na wÄ™Ĺşle)
 #SBATCH --ntasks-per-node=1
 ## IloĹ›Ä‡ pamiÄ™ci przypadajÄ…cej na jeden rdzeĹ„ obliczeniowy (domyĹ›lnie 5GB na rdzeĹ„)
-#SBATCH --mem=6GB
+#SBATCH --mem=8GB
 ## Maksymalny czas trwania zlecenia (format HH:MM:SS)
 #SBATCH --time=01:00:00
 ## Nazwa grantu do rozliczenia zużycia zasobów
-#SBATCH -A plgfmri3-gpu
-#SBATCH --partition=plgrid-gpu-v100
-#SBATCH --gpus-per-task=1
+#SBATCH -A plgfmri3-gpu-a100
+#SBATCH --gres=gpu:1
+## Specyfikacja partycji
+#SBATCH --partition=plgrid-gpu-a100
 ## Plik ze standardowym wyjĹ›ciem
-#SBATCH --output="logs/training/st/dropout0.3-lr0.001-bilinear.out"
-
-echo "JOB_ID"
-echo $SLURM_JOB_ID
+##SBATCH --output="logs/trainings/st/layer_norm_test_more_metrics/zscoreNoNorm.out"
+#SBATCH --error="logs/trainings/st/layer_norm_test_more_metrics/zscoreNoNorm.err"
 
 cd $HOME/repos/fl-varying-normalization
 
-source ./configs/config.sh
-
-run_with_args exe.trainings.classical_train
+srun $PLG_GROUPS_STORAGE/plggflmri/new_conda/fl/bin/python -u -m exe.trainings.classical_train \
+    /net/pr2/projects/plgrid/plggflmri/Data/Internship/FL/varying-normalization/data/zscore
