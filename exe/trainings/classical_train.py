@@ -21,9 +21,14 @@ if __name__ == '__main__':
 
     else:
         data_dir = sys.argv[1]
-        train_directories = os.path.join(data_dir, "train")
-        validation_directory = os.path.join(data_dir, "test")
-        representative_test_dir = train_directories[0].split(os.path.sep)[-2]
+        if data_dir == "all":
+            data_root_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/FL/varying-normalization/data"
+            train_directories = [os.path.join(data_root_dir, data_inner_dir, "train") for data_inner_dir in os.listdir(data_root_dir)]
+            validation_directory =[os.path.join(data_root_dir, data_inner_dir, "validation") for data_inner_dir in os.listdir(data_root_dir)]
+        else:
+            train_directories = os.path.join(data_dir, "train")
+            validation_directory = os.path.join(data_dir, "validation")
+
         if len(sys.argv) > 2:
             num_epochs = int(sys.argv[2])
         else:
@@ -64,7 +69,7 @@ if __name__ == '__main__':
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    if isinstance(train_directories, list) > 1:
+    if isinstance(train_directories, list):
         representative_test_dir = "all"
     else:
         representative_test_dir = get_youngest_dir(train_directories)

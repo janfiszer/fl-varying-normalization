@@ -87,11 +87,20 @@ if __name__ == '__main__':
 
     logging.info(f"metrics: {metrics_values}")
     # logging.info(f"stds: {stds}")
+    descriptive_metric = 'val_gen_dice'
+    try:
+        metric_filename = f"metrics_{representative_test_dir}_dice_{metrics_values[descriptive_metric]:.2f}.pkl"
+        std_filename = f"std_{representative_test_dir}_dice_{metrics_values[descriptive_metric]:.2f}.pkl"
 
-    metric_filepath = os.path.join(model_dir,
-                                   f"metrics_{representative_test_dir}_dice_{metrics_values['val_old_dice_generalized']:.2f}.pkl")
-    std_filepath = os.path.join(model_dir,
-                                f"std_{representative_test_dir}_dice_{metrics_values['val_old_dice_generalized']:.2f}.pkl")
+    except KeyError:
+        logging.error(f"The provided key ({descriptive_metric}) in the `metrics_values` doesn't existing taking `val_loss` as the key")
+        descriptive_metric = 'val_loss'
+        
+        metric_filename = f"metrics_{representative_test_dir}_loss_{metrics_values[descriptive_metric]:.2f}.pkl"
+        std_filename = f"std_{representative_test_dir}_loss_{metrics_values[descriptive_metric]:.2f}.pkl"
+
+    metric_filepath = os.path.join(model_dir, metric_filename)
+    std_filepath = os.path.join(model_dir, std_filename)
 
     with open(metric_filepath, "wb") as file:
         pickle.dump(metrics_values, file)
