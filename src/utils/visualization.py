@@ -150,19 +150,19 @@ def plot_history(network_history, savepath=None):
     axs[0,0].plot(epochs, network_history['val_loss'])
 
     axs[1,0].set_xlabel('Epochs')
-    axs[1,0].set_ylabel('2ClassDice')
-    axs[1,0].plot(epochs, network_history['two_class_generalized_dice'])
-    axs[1,0].plot(epochs, network_history['val_two_class_generalized_dice'])
+    axs[1,0].set_ylabel('Generalized Dice')
+    axs[1,0].plot(epochs, network_history['gen_dice'])
+    axs[1,0].plot(epochs, network_history['val_gen_dice'])
 
     axs[1,1].set_xlabel('Epochs')
-    axs[1,1].set_ylabel('Torchmetrics DICE')
-    axs[1,1].plot(epochs, network_history['generalized_dice_torchmetrics'])
-    axs[1,1].plot(epochs, network_history['val_generalized_dice_torchmetrics'])
+    axs[1,1].set_ylabel('Dice')
+    axs[1,1].plot(epochs, network_history['binarized_smoothed_dice'])
+    axs[1,1].plot(epochs, network_history['val_binarized_smoothed_dice'])
 
     axs[0,1].set_xlabel('Epochs')
-    axs[0,1].set_ylabel('Function Dice')
-    axs[0,1].plot(epochs, network_history['old_dice_generalized'])
-    axs[0,1].plot(epochs, network_history['val_old_dice_generalized'])
+    axs[0,1].set_ylabel('Jaccard Index')
+    axs[0,1].plot(epochs, network_history['binarized_jaccard_index'])
+    axs[0,1].plot(epochs, network_history['val_binarized_jaccard_index'])
 
     plt.legend(['Training', 'Validation'])
 
