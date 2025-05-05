@@ -57,10 +57,8 @@ def perform_evaluate(batch_size, test_dir, model_path):
 
     return unet.evaluate(testloader,
                          save_preds_dir=save_preds_dir,
-                         compute_std=False,
-                         plots_path=os.path.join(model_dir, "eval_visualization", representative_test_dir),
-                         plot_every_batch_with_metrics=True,
-                         plot_metrics_distribution=True)
+                         compute_std=True,
+                         plots_path=os.path.join(model_dir, "eval_visualization", representative_test_dir))
 
 
 if __name__ == '__main__':
@@ -82,11 +80,10 @@ if __name__ == '__main__':
 
     logging.info(f"Model dir is: {model_dir}")
 
-    # metrics_values, stds = perform_evaluate(16, test_dir, model_path)
-    metrics_values = perform_evaluate(1, test_dir, model_path)
+    metrics_values, stds = perform_evaluate(1, test_dir, model_path)
 
     logging.info(f"metrics: {metrics_values}")
-    # logging.info(f"stds: {stds}")
+    logging.info(f"stds: {stds}")
     descriptive_metric = 'val_gen_dice'
     try:
         metric_filename = f"metrics_{representative_test_dir}_dice_{metrics_values[descriptive_metric]:.2f}.pkl"
@@ -106,7 +103,6 @@ if __name__ == '__main__':
         pickle.dump(metrics_values, file)
     logging.info(f"Metrics saved to : {metric_filepath}")
 
-    # with open(std_filepath, "wb") as file:
-    #     pickle.dump(stds, file)
-
+    with open(std_filepath, "wb") as file:
+        pickle.dump(stds, file)
     logging.info(f"Standard deviations saved to : {std_filepath}")
