@@ -56,9 +56,8 @@ def perform_evaluate(batch_size, test_dir, model_path):
     eval_path = os.path.join(model_dir, "eval", representative_test_dir)
 
     return unet.evaluate(testloader,
-                         save_preds_dir=save_preds_dir,
-                         compute_std=True,
-                         plots_path=os.path.join(model_dir, "eval_visualization", representative_test_dir))
+                         compute_std=True)#,
+                        #  plots_path=os.path.join(model_dir, "eval_visualization", representative_test_dir))
 
 
 if __name__ == '__main__':

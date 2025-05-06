@@ -382,6 +382,8 @@ class UNet(nn.Module):
                 self.plot_distribution(metrics_values, histograms_dir_path)
                 logging.debug("\t\t\tAll distribution histograms saved.")
 
+        logging.debug("\t\t\Eval ended computing metrics and standard deviation (if `comupte_std=True`).")
+
         averaged_metrics, std_metrics = self._compute_average_std_metric(metrics_values, n_steps)
         metrics_str = metrics.metrics_to_str(averaged_metrics, sep='\t')
 
