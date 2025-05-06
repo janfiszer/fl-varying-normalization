@@ -1,7 +1,7 @@
 import logging
 import os
 from glob import glob
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from src.utils.files_operations import TransformVolumesToNumpySlices
 
@@ -24,11 +24,10 @@ class SegmentationDataset2DSlices(Dataset):
     """
     EPS = 1e-6
 
-    def __init__(self, data_paths: str, modalities_names: List, mask_dir: str, image_size=None, binarize_mask=False):
+    def __init__(self, data_paths: Union[str, List], modalities_names: List, mask_dir: str,  binarize_mask=False):
         # declaring booleans
         self.binarize_mask = binarize_mask
         self.mask_dir = mask_dir
-        self.image_size = image_size
         self.modalities_names = modalities_names
 
         self.modalities_filepaths, self.target_filepaths = self.load_full_paths(data_paths)
@@ -69,10 +68,6 @@ class SegmentationDataset2DSlices(Dataset):
 
         # loading target mask
         np_target = np.load(self.target_filepaths[index])
-
-        if self.image_size is not None:
-            np_image = self._trim_image(np_image)
-            np_target = self._trim_image(np_target)
 
         tensor_image = torch.from_numpy(np_image)
         tensor_target = torch.from_numpy(np.expand_dims(np_target, axis=0))
