@@ -11,7 +11,7 @@ from pathlib import Path
 from src.utils.files_operations import (
     TransformVolumesToNumpySlices,
     trim_image,
-    get_nii_filepaths,
+    get_patients_filepaths,
     get_youngest_dir
 )
 
@@ -180,7 +180,7 @@ class TestGetNIIFilepaths(unittest.TestCase):
 
     def test_get_all_patients(self):
         # Get filepaths for all patients
-        result = get_nii_filepaths(self.test_dir, self.filepaths_from_data_dir)
+        result = get_patients_filepaths(self.test_dir, self.filepaths_from_data_dir)
 
         # Check results
         self.assertEqual(len(result['t1']), 3)
@@ -194,7 +194,7 @@ class TestGetNIIFilepaths(unittest.TestCase):
 
     def test_limit_patients(self):
         # Get filepaths limited to 2 patients
-        result = get_nii_filepaths(self.test_dir, self.filepaths_from_data_dir, n_patients=2)
+        result = get_patients_filepaths(self.test_dir, self.filepaths_from_data_dir, n_patients=2)
 
         # Check results
         self.assertEqual(len(result['t1']), 2)
@@ -212,14 +212,14 @@ class TestGetNIIFilepaths(unittest.TestCase):
         self.setup_dirs_with_missing_modality()
 
         # Get filepaths - should skip patient4 since it doesn't have t2.nii
-        result = get_nii_filepaths(self.test_dir, self.filepaths_from_data_dir)
+        result = get_patients_filepaths(self.test_dir, self.filepaths_from_data_dir)
 
         # Should still have 3 results (patient4 skipped)
         self.assertEqual(len(result['t1']), 3)
         self.assertEqual(len(result['t2']), 3)
 
     def test_equal_number_of_files_for_all_modalities(self):
-        result = get_nii_filepaths(self.test_dir, self.filepaths_from_data_dir)
+        result = get_patients_filepaths(self.test_dir, self.filepaths_from_data_dir)
         # check if all have the same modality
         filepaths_lists_lens = [len(filepaths) for filepaths in result.values()]
         self.assertTrue(all(length == filepaths_lists_lens[0] for length in filepaths_lists_lens), "Not all the filepath lists have the same length")
@@ -228,7 +228,7 @@ class TestGetNIIFilepaths(unittest.TestCase):
         self.setup_dirs_with_missing_modality()
 
         # Get filepaths - should skip patient4 since it doesn't have t2.nii
-        result = get_nii_filepaths(self.test_dir, self.filepaths_from_data_dir)
+        result = get_patients_filepaths(self.test_dir, self.filepaths_from_data_dir)
 
         # check if all have the same modality
         filepaths_lists_lens = [len(filepaths) for filepaths in result.values()]

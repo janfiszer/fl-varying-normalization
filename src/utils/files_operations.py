@@ -93,9 +93,9 @@ class TransformVolumesToNumpySlices:
         self.create_empty_dirs(self.target_root_dir, self.DIVISION_SETS)
 
         # loading the data
-        modalities_filepaths = get_nii_filepaths(self.origin_data_dir,
-                                                 paths_from_local_dirs,
-                                                 n_patients)
+        modalities_filepaths = get_patients_filepaths(self.origin_data_dir,
+                                                      paths_from_local_dirs,
+                                                      n_patients)
 
         # splitting filenames into train and test sets
         n_samples = len(list(modalities_filepaths.values())[0])
@@ -348,7 +348,7 @@ def trim_image(image, target_image_size: Tuple[int, int]):
            y_pixels_margin:target_image_size[1] + y_pixels_margin]
 
 
-def get_nii_filepaths(data_dir, filepaths_from_data_dir: Dict, n_patients=-1, shuffle_local_dirs=False):
+def get_patients_filepaths(data_dir: str, filepaths_from_data_dir: Dict, n_patients=-1, shuffle_local_dirs=False):
     local_dirs = os.listdir(data_dir)
 
     if shuffle_local_dirs:

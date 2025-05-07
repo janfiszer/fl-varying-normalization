@@ -183,7 +183,7 @@ def normalize_all_from_dir(data_dir: str,
     if not_normalize is None:
         logging.log(logging.WARNING, "All the slices will be normalized. If for example there is a mask provide `not_normalize` to exclude it.\n")
 
-    modalities_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True, n_patients=n_patients)
+    modalities_filepaths = fop.get_patients_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True, n_patients=n_patients)
 
     # splitting the datasets into n subsets (n number of normalizers)
     n_normalization = len(normalizers)
@@ -221,7 +221,7 @@ def normalize_all_from_dir(data_dir: str,
             # loading all the
             raw_t1_volumes = []
             for volume_path_index in range(indices_range[0], indices_range[1]):
-                volume = nib.load(modalities_filepaths['t1'][volume_path_index]).get_fdata()
+                volume = load_volume(modalities_filepaths['t1'][volume_path_index])
                 raw_t1_volumes.append(volume)
 
         for modality, filepaths in modalities_filepaths.items():
@@ -229,7 +229,123 @@ def normalize_all_from_dir(data_dir: str,
             raw_volumes = []
 
             for volume_path_index in range(indices_range[0], indices_range[1]):
-                volume = nib.load(filepaths[volume_path_index]).get_fdata()
+                volume = load_volume(filepaths[volume_path_index])
+                raw_volumes.append(volume)
+
+            # so far I give as the argument of the function all the raw volumes always, because only one setup exists
+            # TODO: make it more adaptive
+            normalizer.setup([np.array(raw_volumes)])
+
+            for i, volume in enumerate(raw_volumes):
+                # extracting the name of the patient (directory the .nii.gz file is in)
+                current_filepath = filepaths[indices_range[0] + i]
+                patient_file_name = fop.get_youngest_dir(current_filepath)
+
+                # creating a new diretory where all the images of the given patient will be saved
+                patient_new_path = os.path.join(normalizer_path, patient_file_name)
+
+                Path(patient_new_path).mkdir(exist_ok=True)
+
+                # creating the filepath where the currently processed volume will be saved
+                save_path = os.path.join(patient_new_path, f"{modality}.npy")
+
+                # in case we have loaded the mask the normalization is not needed, so skip
+                if modality not in not_normalize:
+                    # list of arguments that function is using before normalization of each volume
+                    each_normalization_args = []
+
+                    # depending on the type of normalization different arguments used, so far only `FCM (Fuzzy c-means)`
+                    if normalizer.name == "fcm":
+                        each_normalization_args.append(raw_t1_volumes[i])
+
+                    # actual normalization
+                    normalized_volume = normalizer(volume, Modality.from_string(modality), *each_normalization_args)
+
+                    logging_message = f"Volume from file '{current_filepath}' normalized by '{normalizer} normalizer' and saved to '{save_path}'."
+
+                    # saving histogram and slice plot
+                    if save_histogram_slice_plots:
+                        image_path = os.path.join(histogram_slice_plot_dir,
+                                                  f"{str(normalizer)}_{patient_file_name}_{modality}.png")
+                        plot_single_histogram_and_slice(normalized_volume,
+                                                        slice_index=110,
+                                                        brain_mask=volume > 1e-6,
+                                                        title=str(normalizer),
+                                                        filename=image_path)
+
+                else:
+                    normalized_volume = volume
+                    logging_message = f"Mask volume from file '{current_filepath}' saved to '{save_path}'."
+
+                # saving the volume as a 3D numpy array
+                logging.log(logging.DEBUG, logging_message)
+                np.save(save_path, normalized_volume)
+
+    logging.log(logging.INFO, "Process of normalization and division af the dataset: ENDED")
+
+
+
+
+
+def divide_and_normalize_from_dir(data_dir: str,
+                                  output_dir: str,
+                                  path_from_local_dir: Dict,
+                                  normalizers: List[Normalizer],
+                                  not_normalize: List = None,
+                                  save_histogram_slice_plots=True,
+                                  n_patients=-1):
+    logging.log(logging.INFO, "Process of normalization and division af the dataset: STARTING...\n\n")
+
+    if not_normalize is None:
+        logging.log(logging.WARNING, "All the slices will be normalized. If for example there is a mask provide `not_normalize` to exclude it.\n")
+
+    modalities_filepaths = fop.get_patients_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True, n_patients=n_patients)
+
+    # splitting the datasets into n subsets (n number of normalizers)
+    n_normalization = len(normalizers)
+    n_filepaths = len(list(modalities_filepaths.values())[0])
+    # if divide_dataset:
+    logging.info("`divide_dataset=True` so the dataset (provided in the `data_dir`) will be divided into subsets of equal size"
+                 "The number of subsets is equal to the number of `normalizers`.")
+    subset_size = n_filepaths // n_normalization
+    normalizers_with_indices_ranges = {normalizer: (i * subset_size, i * subset_size + 1) for i, normalizer in
+                                       enumerate(normalizers)}
+
+    logging.info(f"{n_normalization} normalizers were provided, each of them will have a subset "
+                              f"of {subset_size} patients and will be in aproriate directories in {output_dir}.\n")
+    # else:
+    #     logging.info("`divide_dataset=False` so the dataset (provided in the `data_dir`) will normalized by all the "
+    #                  "normalizers and will result in N datasets originating from the same data (N - number of normalizers)")
+    #     normalizers_with_indices_ranges = {normalizer: (0, n_filepaths) for i, normalizer in
+    #                                        enumerate(normalizers)}
+
+    if save_histogram_slice_plots:
+        histogram_slice_plot_dir = os.path.join(output_dir, "slices_and_histograms")
+        Path(histogram_slice_plot_dir).mkdir(exist_ok=True, parents=True)
+
+    # for each modality:
+    # load the data and normalize the data with the given normalizer
+    # store it in a new directory
+    # loading t1 images if the normalizing method is WhiteStripe
+    for normalizer, indices_range in normalizers_with_indices_ranges.items():
+        logging.log(logging.INFO, f"Current normalizer: {normalizer}\nProcessing...")
+        normalizer_path = os.path.join(output_dir, str(normalizer))
+
+        Path(normalizer_path).mkdir(exist_ok=True)
+
+        if normalizer.name == "fcm":
+            # loading all the
+            raw_t1_volumes = []
+            for volume_path_index in range(indices_range[0], indices_range[1]):
+                volume = load_volume(modalities_filepaths['t1'][volume_path_index])
+                raw_t1_volumes.append(volume)
+
+        for modality, filepaths in modalities_filepaths.items():
+            # dedicated_filepaths = filepaths[indices_range[0]: indices_range[1]]
+            raw_volumes = []
+
+            for volume_path_index in range(indices_range[0], indices_range[1]):
+                volume = load_volume(filepaths[volume_path_index])
                 raw_volumes.append(volume)
 
             # so far I give as the argument of the function all the raw volumes always, because only one setup exists
@@ -289,7 +405,7 @@ def demonstrate_normalization(data_dir: str,
                               path_from_local_dir: Dict,
                               normalizers: List[Normalizer],
                               n_volumes: int):
-    modalities_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, n_patients=n_volumes)
+    modalities_filepaths = fop.get_patients_filepaths(data_dir, path_from_local_dir, n_patients=n_volumes)
 
     Path(output_dir).mkdir(exist_ok=True)
 
@@ -339,3 +455,15 @@ def define_normalizers_and_more():
                    ]
 
     return normalizers
+
+
+def load_volume(filepath):
+    # loading the file
+    file_extension = os.path.splitext(filepath)[1]
+    if file_extension == ".npy":
+        img = np.load(filepath)
+    elif file_extension == ".nii.gz":
+        img = nib.load(filepath).get_fdata()
+    else:
+        raise ValueError(f"Wrong file type provided in {filepath}, expected: .npy")
+    return img

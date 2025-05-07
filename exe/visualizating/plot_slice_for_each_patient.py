@@ -37,7 +37,7 @@ def plot_and_save(data_dict, filepath):
 
 
 def plot_slice_for_patient(data_dir, output_dir, path_from_local_dir: Dict, slice_index=110):
-    all_filepaths = fop.get_nii_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=False)
+    all_filepaths = fop.get_patients_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=False)
 
     # for each modality:
     # load the data and normalize the data with the given normalizer

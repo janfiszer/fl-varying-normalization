@@ -25,7 +25,7 @@ if __name__ == '__main__':
     
     data_normalization.normalize_all_from_dir(data_dir,
                                               output_dir,
-                                              config.MODALITIES_AND_PATHS_FROM_LOCAL_DIR,
+                                              config.MODALITIES_AND_NII_PATHS_FROM_LOCAL_DIR,
                                               normalizers,
                                               not_normalize=["mask"],
                                               n_patients=n_patients,
