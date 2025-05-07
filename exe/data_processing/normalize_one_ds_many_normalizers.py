@@ -17,14 +17,17 @@ if __name__ == '__main__':
     else:
         n_patients = int(sys.argv[1])
 
-        data_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/UCSF-PDGM-v3"
-        output_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/UCSF-normalized"
+        data_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/UCSF-normalized/nonorm"
+        output_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/UCSF-1ds-normalized"
 
     normalizers = data_normalization.define_normalizers_and_more()
+    
+    paths_from_local_dirs = config.MODALITIES_AND_NPY_PATHS_FROM_LOCAL_DIR
+    paths_from_local_dirs.pop(config.MASK_DIR)
 
     data_normalization.normalize_all_from_dir(data_dir,
                                                      output_dir,
-                                                     config.MODALITIES_AND_NPY_PATHS_FROM_LOCAL_DIR,
+                                                     paths_from_local_dirs,
                                                      normalizers,
                                                      not_normalize=["mask"],
                                                      n_patients=n_patients,
