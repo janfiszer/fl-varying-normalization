@@ -28,5 +28,6 @@ if __name__ == '__main__':
                                               config.MODALITIES_AND_PATHS_FROM_LOCAL_DIR,
                                               normalizers,
                                               not_normalize=["mask"],
-                                              n_patients=n_patients
+                                              n_patients=n_patients,
+                                              divide_dataset=True
                                               )

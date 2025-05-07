@@ -92,53 +92,6 @@ class Normalizer:
         return {}
 
 
-def plot_histogram(image, title=""):
-    non_zeros = image[image > 0]
-    plt.hist(non_zeros.flatten(), bins=100)
-    plt.title(title)
-    plt.xlabel("Pixel intensity")
-    plt.show()
-
-
-def normalize_fcm(image_to_normalize, t1_image, modality):
-    fcm_norm = FCMNormalize(tissue_type=TissueType.WM)
-    _ = fcm_norm(t1_image)
-
-    normalized_image = fcm_norm(image_to_normalize, modality=modality)
-
-    return normalized_image
-
-
-def normalize_nyul(image_to_normalize, modality, flair_images):
-    nyul_norm = NyulNormalize(output_min_value=0.0, output_max_value=1.0)
-    nyul_norm.fit(flair_images, modality=modality)
-    normalized_image = nyul_norm(image_to_normalize, modality=modality)
-
-    return normalized_image
-
-
-def normalize_white_stripe(image_to_normalize, modality, norm_value=0.05):
-    whitestripe_norm = WhiteStripeNormalize(norm_value=norm_value)
-    normalized_image = whitestripe_norm(image_to_normalize, modality=modality)
-
-    return normalized_image
-
-
-def normalize_zscore(image_to_normalize, modality):
-    zscore_norm = ZScoreNormalize()
-    normalized_image = zscore_norm(image_to_normalize, modality=modality)
-
-    return normalized_image
-
-
-def generate_scans_paths(data_dir, suffix="flair"):
-    # returns the relative path from the data_dir
-    volumes_path = [os.path.join(data_dir, subject_dir, f"{subject_dir}_{suffix}.nii.gz") for subject_dir in
-                    os.listdir(data_dir)]
-
-    return volumes_path
-
-
 def plot_single_histogram_and_slice(volume, slice_index, brain_mask, title, filename):
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
@@ -223,7 +176,8 @@ def normalize_all_from_dir(data_dir: str,
                            normalizers: List[Normalizer],
                            not_normalize: List = None,
                            save_histogram_slice_plots=True, 
-                           n_patients=-1):
+                           n_patients=-1,
+                           divide_dataset=False):
     logging.log(logging.INFO, "Process of normalization and division af the dataset: STARTING...\n\n")
 
     if not_normalize is None:
@@ -233,12 +187,21 @@ def normalize_all_from_dir(data_dir: str,
 
     # splitting the datasets into n subsets (n number of normalizers)
     n_normalization = len(normalizers)
-    subset_size = len(list(modalities_filepaths.values())[0]) // n_normalization
-    normalizers_with_indices_ranges = {normalizer: (i * subset_size, i * subset_size + 1) for i, normalizer in
-                                       enumerate(normalizers)}
+    n_filepaths = len(list(modalities_filepaths.values())[0])
+    if divide_dataset:
+        logging.info("`divide_dataset=True` so the dataset (provided in the `data_dir`) will be divided into subsets of equal size"
+                     "The number of subsets is equal to the number of `normalizers`.")
+        subset_size = n_filepaths // n_normalization
+        normalizers_with_indices_ranges = {normalizer: (i * subset_size, i * subset_size + 1) for i, normalizer in
+                                           enumerate(normalizers)}
 
-    logging.log(logging.INFO, f"{n_normalization} normalizers were provided, each of them will have a subset "
-                              f"of {subset_size} patients and will be in aproriate directories in {output_dir}.\n")
+        logging.info(f"{n_normalization} normalizers were provided, each of them will have a subset "
+                                  f"of {subset_size} patients and will be in aproriate directories in {output_dir}.\n")
+    else:
+        logging.info("`divide_dataset=False` so the dataset (provided in the `data_dir`) will normalized by all the "
+                     "normalizers and will result in N datasets originating from the same data (N - number of normalizers)")
+        normalizers_with_indices_ranges = {normalizer: (0, n_filepaths) for i, normalizer in
+                                           enumerate(normalizers)}
 
     if save_histogram_slice_plots:
         histogram_slice_plot_dir = os.path.join(output_dir, "slices_and_histograms")
@@ -319,50 +282,6 @@ def normalize_all_from_dir(data_dir: str,
                 np.save(save_path, normalized_volume)
 
     logging.log(logging.INFO, "Process of normalization and division af the dataset: ENDED")
-
-
-def test_every_normalizer():
-    data_dir = "C:\\Users\\JanFiszer\\data\\mri\\flair_volumes"
-    subject_1 = "Brats18_TCIA13_654_1"
-
-    # loading t1w and flair images from the same subject
-    image_t1 = nib.load(os.path.join(data_dir, subject_1,
-                                     f"{subject_1}_t1.nii.gz")).get_fdata()  # assume skull-stripped otherwise load mask too
-    image_flair = nib.load(os.path.join(data_dir, subject_1, f"{subject_1}_flair.nii.gz")).get_fdata()
-
-    modality = Modality.FLAIR
-    # subject_2 = "Brats18_TCIA13_654_1"
-
-    # loading t1w and flair images from the same subject
-    # image = nib.load(os.path.join(data_dir, subject_2,
-    #                               f"{subject_2}_t1.nii.gz")).get_fdata()  # assume skull-stripped otherwise load mask too
-    # image_flair = nib.load(os.path.join(data_dir, subject_2, f"{subject_2}_flair.nii.gz")).get_fdata()
-
-    flair_volume_paths = generate_scans_paths(os.path.join(data_dir), suffix="flair")
-    flair_images = [nib.load(volume_path).get_fdata() for volume_path in flair_volume_paths]
-    brain_mask = image_t1 > 1e-6
-
-    normalized_volumes = {"Not normalized": image_flair,
-                          "FCM": normalize_fcm(image_flair, image_t1, modality),
-                          "Nyul": normalize_nyul(image_flair, modality, flair_images),
-                          # "White Stripe (normalization scaler=0.2)": normalize_white_stripe(image_flair, norm_value=0.2),
-                          # "White Stripe (normalization scaler=0.02)": normalize_white_stripe(image_flair, norm_value=0.02),
-                          "White Stripe (normalization scaler=0.05)": normalize_white_stripe(image_flair, modality,
-                                                                                             norm_value=0.05),
-                          "z-score": normalize_zscore(image_flair, modality=modality)
-                          }
-
-    plot_histograms_one_slice(normalized_volumes, slice_index=[110, 125], brain_mask=brain_mask)
-
-    # plot histograms and example slice
-    # plot_histogram(image_flair, title="Not normalized")
-    # plot_histogram(nyul_flair, title="Nyul normalized")
-    # plt.imshow(image_flair[:, :, slice_index], cmap="grey")
-    # plt.colorbar()
-    # plt.show()
-    # plt.imshow(nyul_flair[:, :, slice_index], cmap="grey")
-    # plt.colorbar()
-    # plt.show()
 
 
 def demonstrate_normalization(data_dir: str,
