@@ -1,5 +1,5 @@
 import sys
-
+import logging
 from configs import config
 from src.fl.clients import *
 from src.deep_learning import metrics, models
@@ -24,6 +24,7 @@ if __name__ == "__main__":
         if ":" not in server_address:
             server_address = f"{server_node}:{server_address}"
 
+    logging.info(f"Client start {client_id}")
     # Model
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     criterion = metrics.LossGeneralizedTwoClassDice(device)
@@ -35,7 +36,7 @@ if __name__ == "__main__":
     else:
         client = client_from_string(client_id, unet, optimizer, data_dir, sys.argv[4])
 
-    print(f"The retrieved server address is :", server_address)
+    logging.info(f"The retrieved server address is :", server_address)
 
     fl.client.start_numpy_client(
         server_address=server_address,

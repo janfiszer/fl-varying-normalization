@@ -1,6 +1,7 @@
 import socket
 import sys
 import torch
+import logging
 
 from src.fl.strategies import strategy_from_string
 from src.deep_learning.models import UNet
@@ -8,6 +9,7 @@ import flwr as fl
 from configs import config
 
 if __name__ == "__main__":
+    logging.info("Server start")
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     unet = UNet().to(device)
 
@@ -23,12 +25,12 @@ if __name__ == "__main__":
 
         server_address = f"{socket.gethostname()}:{port_number}"
 
-    print("\n\nSERVER STARTING...")
-    print("Strategy utilized: {}".format(strategy))
-    print("Server address: {}\n".format(server_address))
+    logging.info("\n\nSERVER STARTING...")
+    logging.info("Strategy utilized: {}".format(strategy))
+    logging.info("Server address: {}\n".format(server_address))
 
     if not config.LOCAL:
-        with open(f"server_nodes/{sys.argv[2]}{config.NODE_FILENAME}", 'w') as file:
+        with open(f"comunication/server_nodes{sys.argv[2]}{config.NODE_FILENAME}", 'w') as file:
             file.write(socket.gethostname())
 
     fl.server.start_server(
