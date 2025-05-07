@@ -63,7 +63,7 @@ def perform_evaluate(batch_size, test_dir, model_path):
 if __name__ == '__main__':
     if config.LOCAL:
         test_dir = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
-        model_path = "C:\\Users\\JanFiszer\\repos\\fl-varying-normalization\\trained_models\\st\\model-zscore-MSE_DSSIM-ep16-lr0.001-GN-2025-04-24-11h\\best_model.pth"
+        model_path = "C:\\Users\\JanFiszer\\repos\\fl-varying-normalization\\trained_models\\st\\model-all-ep16-lr0.001-GN-2025-04-30-13h\\best_model.pth"
     else:
         test_dir = sys.argv[1]
         model_path = sys.argv[2]
@@ -75,7 +75,6 @@ if __name__ == '__main__':
 
     model_dir = os.path.dirname(model_path)
     representative_test_dir = get_youngest_dir(test_dir)
-
 
     logging.info(f"Model dir is: {model_dir}")
 
