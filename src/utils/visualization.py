@@ -1,6 +1,6 @@
 from typing import List
 import os
-
+import logging
 from src.utils.files_operations import get_patients_filepaths, extract_background_pixel_value
 from configs import config
 
@@ -201,8 +201,8 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
         "t1":
             {
                 'fcm': (-0.5, 2),
-                'minmax': (-0.5, 1),
-                'nonorm': (-500, 5000),
+                'minmax': (-0.2, 1),
+                'nonorm': (-200, 5000),
                 'nyul': (-2, 2),
                 'whitestripe': (-3, 1.5),
                 'zscore': (-3, 3)  # Adjust name and range for your 6th method
@@ -210,8 +210,8 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
         "t2":
             {
                 'fcm': (-0.5, 4),
-                'minmax': (-0.5, 1),
-                'nonorm': (-500, 2000),
+                'minmax': (-0.2, 1),
+                'nonorm': (-200, 2000),
                 'nyul': (-2, 2),
                 'whitestripe': (-4, 9),
                 'zscore': (-3, 6)  # Adjust name and range for your 6th method
@@ -219,8 +219,8 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
         "flair":
             {
                 'fcm': (-0.5, 4),
-                'minmax': (-0.5, 1),
-                'nonorm': (-500, 3000),
+                'minmax': (-0.2, 1),
+                'nonorm': (-200, 3000),
                 'nyul': (-2, 2),
                 'whitestripe': (-3, 4),
                 'zscore': (-3, 5)  # Adjust name and range for your 6th method
@@ -271,7 +271,10 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
                     continue
                 
                 if modality == "t1":
-                    y_lim = max_density*2.4
+                    if method == "minmax":
+                        y_lim = max_density * 4
+                    else:
+                        y_lim = max_density*2.2
                 else:
                     y_lim = max_density*1.9
                 axes[row, col].set_ylim(0, y_lim)
