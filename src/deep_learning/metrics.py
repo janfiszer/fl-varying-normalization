@@ -2,7 +2,6 @@ from typing import Dict, List, Any, Optional, Sequence, Tuple, Union, Literal
 
 from configs import config
 from torchmetrics.metric import Metric
-from torchmetrics.segmentation import GeneralizedDiceScore
 
 import torch
 
@@ -81,7 +80,6 @@ class GeneralizedTwoClassDice(Metric):
 
 
 class BinaryDice(Metric):
-    # full_state_update: bool = False
 
     def __init__(self, smooth=1.0, binarize_threshold=None):
         super(BinaryDice, self).__init__()
@@ -90,12 +88,6 @@ class BinaryDice(Metric):
 
         self.smooth = smooth
         self.binarize_threshold = binarize_threshold
-        # self.add_state("smooth", default=torch.tensor(smooth))
-        #
-        # if binarize_threshold:
-        #     self.add_state("binarize_threshold", default=torch.tensor(binarize_threshold))
-        # else:
-        #     self.binarize_threshold = None
 
     def update(self, preds: torch.Tensor, targets: torch.Tensor):
         assert preds.shape == targets.shape
@@ -169,34 +161,6 @@ class JaccardIndex(Metric):
 ####################
 # OLD SEGMENTATION #
 ####################
-
-class GeneralizedDiceLoss(torch.nn.Module):
-    def __init__(self, num_classes: int, device: str, binary_crossentropy: bool = False):
-        super(GeneralizedDiceLoss, self).__init__()
-        self.dice = GeneralizedDiceScore(num_classes, per_class=True).to(device)
-        self.binary_crossentropy = binary_crossentropy
-
-        if binary_crossentropy:
-            self.bce_loss = torch.nn.BCELoss().to(device)
-
-    def forward(self, predict, target):
-        assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
-
-        # TODO: dice=0 when no target ALWAYS...
-        dice_scores = self.dice(predict, target)
-        loss = 1 - dice_scores.mean()
-
-        if self.binary_crossentropy:
-            bce_loss = self.bce_loss(predict, target.float())
-            total_loss = loss + bce_loss
-        else:
-            total_loss = loss
-
-        return total_loss
-
-    def __repr__(self):
-        return "GeneralizedDiceLoss"
-
 
 class BinaryDiceLoss(torch.nn.Module):
     """Dice loss of binary class

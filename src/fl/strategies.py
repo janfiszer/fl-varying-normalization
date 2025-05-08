@@ -37,7 +37,7 @@ def create_dynamic_strategy(StrategyClass: Type[Strategy], model: models.UNet, m
             self.aggregation_times = []
             self.best_loss = float('inf')
 
-            Path(self.model_dir).mkdir(exist_ok=config.LOCAL)  # creating directory before to don't get warnings
+            Path(self.model_dir).mkdir(exist_ok=True)  # creating directory before to don't get warnings
             copy2("./configs/config.py", f"{self.model_dir}/config.py")
 
         def aggregate_fit(

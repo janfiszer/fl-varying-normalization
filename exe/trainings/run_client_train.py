@@ -15,10 +15,11 @@ if __name__ == "__main__":
         data_dir = sys.argv[1]
         client_id = sys.argv[2]
         server_address = sys.argv[3]
+        strategy_name = sys.argv[4]
         with_num_workers = True
 
         if not config.LOCAL:
-            with open(f"server_nodes/{sys.argv[4]}{config.NODE_FILENAME}", 'r') as file:   # TODO: sys.argv
+            with open(f"{config.NODE_SERVER_DIRPATH}/{strategy_name}{config.NODE_FILENAME}", 'r') as file:   # TODO: sys.argv
                 server_node = file.read()
 
         if ":" not in server_address:
@@ -30,13 +31,9 @@ if __name__ == "__main__":
     criterion = metrics.LossGeneralizedTwoClassDice(device)
     unet = models.UNet(criterion).to(device)
     optimizer = torch.optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
-    
-    if len(sys.argv) < 5:
-        client = client_from_string(client_id, unet, optimizer, data_dir, "fedavg")
-    else:
-        client = client_from_string(client_id, unet, optimizer, data_dir, sys.argv[4])
+    client = client_from_string(client_id, unet, optimizer, data_dir, sys.argv[4])
 
-    logging.info(f"The retrieved server address is :", server_address)
+    logging.info(f"The retrieved server address is : {server_address}")
 
     fl.client.start_numpy_client(
         server_address=server_address,

@@ -30,7 +30,7 @@ if __name__ == "__main__":
     logging.info("Server address: {}\n".format(server_address))
 
     if not config.LOCAL:
-        with open(f"comunication/server_nodes{sys.argv[2]}{config.NODE_FILENAME}", 'w') as file:
+        with open(f"{config.NODE_SERVER_DIRPATH}/{sys.argv[2]}{config.NODE_FILENAME}", 'w') as file:
             file.write(socket.gethostname())
 
     fl.server.start_server(
