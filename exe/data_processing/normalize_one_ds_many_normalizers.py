@@ -18,12 +18,30 @@ if __name__ == '__main__':
         n_patients = int(sys.argv[1])
 
         data_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/UCSF-normalized/nonorm"
-        output_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/UCSF-1ds-normalized"
+        output_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/UCSF-1ds-normalized-test"
 
     normalizers = data_normalization.define_normalizers_and_more()
     
     paths_from_local_dirs = config.MODALITIES_AND_NPY_PATHS_FROM_LOCAL_DIR
     paths_from_local_dirs.pop(config.MASK_DIR)
+
+    nonorm_test_patients = ["UCSF-PDGM-0516_nifti",
+                        "UCSF-PDGM-0116_nifti",
+                        "UCSF-PDGM-0179_nifti",
+                        "UCSF-PDGM-0158_nifti",
+                        "UCSF-PDGM-0345_nifti",
+                        "UCSF-PDGM-0229_nifti",
+                        "UCSF-PDGM-0440_nifti",
+                        "UCSF-PDGM-0369_nifti",
+                        "UCSF-PDGM-0225_nifti",
+                        "UCSF-PDGM-0402_nifti",
+                        "UCSF-PDGM-0349_nifti",
+                        "UCSF-PDGM-0039_nifti",
+                        "UCSF-PDGM-0486_nifti",
+                        "UCSF-PDGM-0185_nifti",
+                        "UCSF-PDGM-0330_nifti",
+                        "UCSF-PDGM-0136_nifti",
+                        "UCSF-PDGM-0035_nifti"]
 
     data_normalization.normalize_all_from_dir(data_dir,
                                                      output_dir,
@@ -31,5 +49,6 @@ if __name__ == '__main__':
                                                      normalizers,
                                                      not_normalize=["mask"],
                                                      n_patients=n_patients,
-                                                     divide_dataset=False
+                                                     divide_dataset=False, 
+                                                     filtered_patients=nonorm_test_patients
                                                      )
