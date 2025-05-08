@@ -195,18 +195,7 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
                                                                config.MODALITIES_AND_NPY_PATHS_FROM_LOCAL_DIR)
 
     methods = list(norm_filepaths.keys())
-    fig, axes = plt.subplots(3, 6, figsize=(20, 16))
-
-    # Define intensity ranges for each normalization method based on the reference image
-    # Adjust these values based on your actual data
-    # x_ranges = {
-    #     'fcm': (0, 4),
-    #     'minmax': (0, 1),
-    #     'nonorm': (0, 3000),
-    #     'nyul': (-0.5, 3),
-    #     'whitestripe': (-0.5, 5),
-    #     'zscore': (-0.5, 4)  # Adjust name and range for your 6th method
-    # }
+    fig, axes = plt.subplots(len(from_local_dir_path), len(methods), figsize=(20, 16))
 
     x_ranges = {
         "t1":
@@ -245,7 +234,7 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
     # For demonstration - adjust this to match your actual data organization
     # This is a placeholder assuming you have different patient groups
     # If you don't have this structure, you can simplify this code
-    for col, method in enumerate(methods):  # Assuming 5 methods per row
+    for col, method in enumerate(methods):
         # Get file paths for this method
         filepaths = norm_filepaths[method]
 
@@ -269,7 +258,7 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
                     )
                     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
                     color = 'blue'
-                    alpha = 0.4
+                    alpha = 0.2
                     axes[row, col].plot(bin_centers, hist, color=color, alpha=alpha, linewidth=0.8)
 
                     current_max = np.max(hist)
@@ -279,19 +268,24 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
                 except Exception as e:
                     print(f"Error processing {filepath}: {e}")
                     continue
-
-                axes[row, col].set_ylim(0, max_density*1.3)
+                
+                if modality == "t1":
+                    y_lim = max_density*2
+                else:
+                    y_lim = max_density*1.6
+                axes[row, col].set_ylim(0, y_lim)
 
             # Set subplot title (only for first row)
             if row == 0:
-                axes[row, col].set_title(method)
+                axes[row, col].set_title(config.OFFICIAL_NORMALIZATION_NAMES[method])
 
             # Set axes labels
-            axes[row, col].set_xlabel('Gray scale intensity value')
+            if row == len(modalities) - 1:
+                axes[row, col].set_xlabel('Gray scale intensity value')
 
             # Set y-label only for leftmost column
             if col == 0:
-                axes[row, col].set_ylabel(f'{modality}\nStandardized amount of intensity')
+                axes[row, col].set_ylabel(f'{config.OFFICIAL_MODALITIES_NAMES[modality]}\nStandardized amount of intensity')
 
             # Set consistent y-axis limits across all plots
 
