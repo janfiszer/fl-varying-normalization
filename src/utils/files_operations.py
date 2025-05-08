@@ -314,16 +314,7 @@ class TransformVolumesToNumpySlices:
 
     @staticmethod
     def get_optimal_slice_range(brain_slices, target_zero_ratio, slices_id=None):
-        if slices_id is None:
-            slices_id = ""
-
-        pixel_counts = np.unique(brain_slices, return_counts=True)
-
-        # if there is less than 30% of the most frequent pixel there is a risk that the background is not unified
-        if pixel_counts[1][0] / brain_slices.flatten().shape[0] < 0.3:
-            logging.log(logging.WARNING, "The method assumes that all the background pixels have the same value. "
-                                         f"In the provided volume {slices_id} less than 30% of pixels have the same value.")
-        background_color = pixel_counts[0][0]
+        background_color = extract_background_pixel_value(brain_slices, slices_id)
         zero_ratios = np.array([np.sum(brain_slice == background_color) / (brain_slice.shape[0] * brain_slice.shape[1])
                                 for brain_slice in brain_slices])
         satisfying_given_ratio = np.where(zero_ratios < target_zero_ratio)[0]
@@ -335,6 +326,18 @@ class TransformVolumesToNumpySlices:
         # retrieving slices where the slice have at least one pixel different from zero
         having_any_mask = {index for index, mask_slice in enumerate(mask_volume) if np.sum(mask_slice) > 0}
         return having_any_mask
+
+
+def extract_background_pixel_value(image, image_name=None):
+    if image_name is None:
+        slices_id = ""
+    pixel_counts = np.unique(image, return_counts=True)
+
+    # if there is less than 30% of the most frequent pixel there is a risk that the background is not unified
+    if pixel_counts[1][0] / image.flatten().shape[0] < 0.3:
+        logging.log(logging.WARNING, "The method assumes that all the background pixels have the same value. "
+                                     f"In the provided volume {image_name} less than 30% of pixels have the same value.")
+    return pixel_counts[0][0]
 
 
 def trim_image(image, target_image_size: Tuple[int, int]):

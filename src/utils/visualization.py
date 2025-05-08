@@ -1,7 +1,7 @@
 from typing import List
 import os
 
-from src.utils.files_operations import get_patients_filepaths
+from src.utils.files_operations import get_patients_filepaths, extract_background_pixel_value
 from configs import config
 
 import matplotlib.pyplot as plt
@@ -200,30 +200,30 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
     x_ranges = {
         "t1":
             {
-                'fcm': (0, 2),
-                'minmax': (0, 1),
-                'nonorm': (0, 5000),
-                'nyul': (-0.5, 2),
-                'whitestripe': (-0.2, 1.5),
-                'zscore': (-0.5, 3)  # Adjust name and range for your 6th method
+                'fcm': (-0.5, 2),
+                'minmax': (-0.5, 1),
+                'nonorm': (-500, 5000),
+                'nyul': (-2, 2),
+                'whitestripe': (-3, 1.5),
+                'zscore': (-3, 3)  # Adjust name and range for your 6th method
             },
         "t2":
             {
-                'fcm': (0, 4),
-                'minmax': (0, 1),
-                'nonorm': (0, 3000),
-                'nyul': (-0.5, 2),
-                'whitestripe': (-0.5, 7),
-                'zscore': (-0.5, 6)  # Adjust name and range for your 6th method
+                'fcm': (-0.5, 4),
+                'minmax': (-0.5, 1),
+                'nonorm': (-500, 2000),
+                'nyul': (-2, 2),
+                'whitestripe': (-4, 9),
+                'zscore': (-3, 6)  # Adjust name and range for your 6th method
             },
         "flair":
             {
-                'fcm': (0, 4),
-                'minmax': (0, 1),
-                'nonorm': (0, 3000),
-                'nyul': (-0.5, 2),
-                'whitestripe': (-0.5, 4),
-                'zscore': (-0.5, 5)  # Adjust name and range for your 6th method
+                'fcm': (-0.5, 4),
+                'minmax': (-0.5, 1),
+                'nonorm': (-500, 3000),
+                'nyul': (-2, 2),
+                'whitestripe': (-3, 4),
+                'zscore': (-3, 5)  # Adjust name and range for your 6th method
             }
     }
 
@@ -234,7 +234,7 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
     # For demonstration - adjust this to match your actual data organization
     # This is a placeholder assuming you have different patient groups
     # If you don't have this structure, you can simplify this code
-    for col, method in enumerate(methods):
+    for col, method in enumerate(config.NORMALIZATION_ORDER):
         # Get file paths for this method
         filepaths = norm_filepaths[method]
 
@@ -246,8 +246,9 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
                     # Load the MRI data
                     img = np.load(filepath)
 
-                    # Extract non-zero voxels (brain tissue)
-                    brain_voxels = img[img > 0].flatten()
+                    # Extract brain tissue
+                    background_value = extract_background_pixel_value(img)
+                    brain_voxels = img[img != background_value].flatten()
 
                     # Compute histogram
                     hist, bin_edges = np.histogram(
@@ -270,9 +271,9 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
                     continue
                 
                 if modality == "t1":
-                    y_lim = max_density*2
+                    y_lim = max_density*2.4
                 else:
-                    y_lim = max_density*1.6
+                    y_lim = max_density*1.9
                 axes[row, col].set_ylim(0, y_lim)
 
             # Set subplot title (only for first row)
@@ -281,7 +282,7 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
 
             # Set axes labels
             if row == len(modalities) - 1:
-                axes[row, col].set_xlabel('Gray scale intensity value')
+                axes[row, col].set_xlabel('Voxel intensity value')
 
             # Set y-label only for leftmost column
             if col == 0:
