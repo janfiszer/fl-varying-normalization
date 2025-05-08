@@ -175,6 +175,7 @@ def normalize_all_from_dir(data_dir: str,
                            path_from_local_dir: Dict,
                            normalizers: List[Normalizer],
                            not_normalize: List = None,
+                           filtered_patients: List = None,
                            save_histogram_slice_plots=True, 
                            n_patients=-1,
                            divide_dataset=False):
@@ -183,7 +184,8 @@ def normalize_all_from_dir(data_dir: str,
     if not_normalize is None:
         logging.log(logging.WARNING, "All the slices will be normalized. If for example there is a mask provide `not_normalize` to exclude it.\n")
 
-    modalities_filepaths = fop.get_patients_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True, n_patients=n_patients)
+    # TODO: make it outside the function (too many parameters provided)
+    modalities_filepaths = fop.get_patients_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True, n_patients=n_patients, filtered_patients=filtered_patients)
 
     # splitting the datasets into n subsets (n number of normalizers)
     n_normalization = len(normalizers)

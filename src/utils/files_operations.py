@@ -348,7 +348,7 @@ def trim_image(image, target_image_size: Tuple[int, int]):
            y_pixels_margin:target_image_size[1] + y_pixels_margin]
 
 
-def get_patients_filepaths(data_dir: str, filepaths_from_data_dir: Dict, n_patients=-1, shuffle_local_dirs=False):
+def get_patients_filepaths(data_dir: str, filepaths_from_data_dir: Dict, n_patients=-1, shuffle_local_dirs=False, filtered_patients: List = None):
     local_dirs = os.listdir(data_dir)
 
     if shuffle_local_dirs:
@@ -396,7 +396,31 @@ def get_patients_filepaths(data_dir: str, filepaths_from_data_dir: Dict, n_patie
                 f"For the provided parameters, found {modalities_counts} by reading from files (with limit of {n_patients} patients):\n"
                 f"{used_local_dirs_string}\n\n")
 
+    if filtered_patients:
+        logging.log(logging.INFO,
+            f"Filtering based on the `filtered_patients`...")
+        modalities_filepaths = filter_filepaths(modalities_filepaths, filtered_patients)
+
+        logging.info(f"After filtering there are {len(list(modalities_filepaths.values())[0])} filepaths remaing.")
+        logging.debug(f"`modalities_filepaths`={modalities_filepaths}")
+
+
     return modalities_filepaths
+
+def filter_filepaths(modalities_filepaths, filtered_patients):
+    filtered_filepaths_dict = {}
+
+    for modality, filepaths in modalities_filepaths.items():
+        filtered_filepaths = []
+        
+        for filepath in filepaths:
+            # Check if any substring is in the current string
+            if any(patient_name in filepath for patient_name in filtered_patients):
+                filtered_filepaths.append(filepath)
+
+        filtered_filepaths_dict[modality] = filtered_filepaths
+
+    return filtered_filepaths_dict
 
 
 def get_youngest_dir(filepath):
