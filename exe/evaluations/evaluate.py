@@ -11,20 +11,7 @@ from torch.utils.data import DataLoader
 
 from src.utils.files_operations import get_youngest_dir
 
-
-class DifferentTranslationError(Exception):
-    pass
-
-
-def import_from_filepath(to_import_filepath):
-    module_name = to_import_filepath.replace('/', '_').replace('.py', '')  # Create a valid module name
-    spec = importlib.util.spec_from_file_location(module_name, to_import_filepath)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def perform_evaluate(batch_size, test_dir, model_path):
+def perform_evaluate(test_dir, model_path):
     model_dir = os.path.dirname(model_path)
     representative_test_dir = get_youngest_dir(test_dir)
 
@@ -35,7 +22,7 @@ def perform_evaluate(batch_size, test_dir, model_path):
                                                    mask_dir=config.MASK_DIR,
                                                    binarize_mask=True)
 
-    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False)
+    testloader = DataLoader(testset, batch_size=1, shuffle=False)
 
     criterion = metrics.LossGeneralizedTwoClassDice(device)
     logging.info(f"Taken criterion is: {criterion}")
@@ -62,6 +49,7 @@ def perform_evaluate(batch_size, test_dir, model_path):
 
 
 if __name__ == '__main__':
+    # define the data and model paths
     if config.LOCAL:
         test_dir = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small"
         model_path = "C:\\Users\\JanFiszer\\repos\\fl-varying-normalization\\trained_models\\st\\model-all-ep16-lr0.001-GN-2025-04-30-13h\\best_model.pth"
@@ -69,32 +57,33 @@ if __name__ == '__main__':
         test_dir = sys.argv[1]
         model_path = sys.argv[2]
 
-    if len(sys.argv) > 4:
-        config_path = sys.argv[4]
-    else:
-        config_path = os.path.join(os.path.dirname(model_path), "config.py")
-
+    # extract directories names from the full paths
     model_dir = os.path.dirname(model_path)
     representative_test_dir = get_youngest_dir(test_dir)
 
     logging.info(f"Model dir is: {model_dir}")
 
-    metrics_values, stds = perform_evaluate(1, test_dir, model_path)
+    # the evaluate
+    metrics_values, stds = perform_evaluate(test_dir, model_path)
 
     logging.info(f"metrics: {metrics_values}")
     logging.info(f"stds: {stds}")
+
     descriptive_metric = 'val_gen_dice'
+
+    # create the filenames for saving the evaluations results
     try:
         metric_filename = f"metrics_{representative_test_dir}_dice_{metrics_values[descriptive_metric]:.2f}.pkl"
         std_filename = f"std_{representative_test_dir}_dice_{metrics_values[descriptive_metric]:.2f}.pkl"
-
     except KeyError:
+        # in case the descriptive_metric wasn't found
         logging.error(f"The provided key ({descriptive_metric}) in the `metrics_values` doesn't existing taking `val_loss` as the key")
         descriptive_metric = 'val_loss'
         
         metric_filename = f"metrics_{representative_test_dir}_loss_{metrics_values[descriptive_metric]:.2f}.pkl"
         std_filename = f"std_{representative_test_dir}_loss_{metrics_values[descriptive_metric]:.2f}.pkl"
 
+    # save the evaluation results     
     metric_filepath = os.path.join(model_dir, metric_filename)
     std_filepath = os.path.join(model_dir, std_filename)
 

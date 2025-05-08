@@ -13,6 +13,9 @@ from torch.utils.data import DataLoader
 if __name__ == '__main__':
     # setting default parameters
     pretrained_model_path = None
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    # define the paths and number of epochs
     if config.LOCAL:
         train_directories = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small_only_mask"
         validation_directory = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test\\small_no_mask"
@@ -67,32 +70,36 @@ if __name__ == '__main__':
                                num_workers=config.NUM_WORKERS,
                                pin_memory=True)
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
+    # extract the `representative_dir` based on the data it is trained
     if isinstance(train_directories, list):
-        representative_test_dir = "all"
+        representative_dir = "all"
     else:
-        representative_test_dir = get_youngest_dir(train_directories)
+        representative_dir = get_youngest_dir(train_directories)
 
-    model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_test_dir}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
+    # create the model_dir name name having some config info and mkdir it 
+    model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_dir}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
     Path(model_dir).mkdir(parents=True, exist_ok=True)
 
+    # initialize the UNet model and the criterion
     criterion = metrics.LossGeneralizedTwoClassDice(device)
     unet = UNet(criterion).to(device)
 
+    # get the pretrained weights (if provided)
     if pretrained_model_path:
         unet.load_state_dict(torch.load(pretrained_model_path, map_location=torch.device('cpu')))
         model_dir = os.path.dirname(pretrained_model_path)
 
+    # initialize the optimizer
     optimizer = torch.optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
 
+    # copy the config to the model_dir for further investigation
     config_path = "./configs/config.py"
-
     try:
         copy2(config_path, f"{model_dir}/config.py")
     except FileNotFoundError:
         logging.error(f"Config file not found at {config_path}. You are in {os.getcwd()}")
 
+    # train the model
     if config.LOCAL:
         unet.perform_train(trainloader, optimizer,
                            validationloader=valloader,

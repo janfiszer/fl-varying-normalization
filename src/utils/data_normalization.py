@@ -17,6 +17,7 @@ from intensity_normalization.normalize.whitestripe import WhiteStripeNormalize
 from intensity_normalization.normalize.zscore import ZScoreNormalize
 
 
+# set of classes used for an easier normalization
 class NoNormalization:
     def __init__(self):
         return
@@ -93,6 +94,10 @@ class Normalizer:
 
 
 def plot_single_histogram_and_slice(volume, slice_index, brain_mask, title, filename):
+    """
+    Plot the slice from the provided index (`slice_index`) and 
+    the given volume's histogram of the brain voxels (brain mask needed `brain_mask`)
+    """
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
     # Ensure the axes indexing works for multiple or single arrays
