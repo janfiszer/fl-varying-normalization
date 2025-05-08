@@ -102,7 +102,7 @@ def save_aggregated_model(model: models.UNet, aggregated_parameters, model_dir, 
     state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
 
     # saving the model with an appropriate name
-    model_name = "best.pth" if best_model else f"round{server_round}.pth"
+    model_name = "best_model.pth" if best_model else f"round{server_round}.pth"
     torch.save(state_dict, os.path.join(model_dir, model_name))
 
     # it could have been done using
