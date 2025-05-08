@@ -1,3 +1,4 @@
+import logging
 import os
 import os.path
 import pickle
@@ -56,7 +57,7 @@ class ClassicClient(fl.client.NumPyClient):
                                        f"{self.__repr__()}_client_{self.client_id}")
 
         Path(self.client_dir).mkdir()
-        print(f"Client {client_id} with data from directory: {data_dir}: INITIALIZED\n")
+        logging.info(f"Client {client_id} with data from directory: {data_dir}: INITIALIZED\n")
 
     def get_parameters(self, config):
         return [val.cpu().numpy() for val in self.model.state_dict().values()]
@@ -70,7 +71,7 @@ class ClassicClient(fl.client.NumPyClient):
         self.set_parameters(parameters)
 
         current_round = config["current_round"]
-        print(f"ROUND {current_round}")
+        logging.info(f"ROUND {current_round}")
 
         if global_config.LOCAL:
             plots_dir = None
@@ -85,7 +86,7 @@ class ClassicClient(fl.client.NumPyClient):
                                         #    plots_dir=plots_dir
                                            )
 
-        print(f"END OF CLIENT TRAINING\n")
+        logging.info(f"END OF CLIENT TRAINING\n")
 
         val_metric_names = [f"val_{metric}" for metric in global_config.METRICS]
 
@@ -108,7 +109,7 @@ class ClassicClient(fl.client.NumPyClient):
 
     def _evaluate(self, current_round: int):
 
-        print(f"CLIENT {self.client_id} ROUND {current_round} TESTING...")
+        logging.info(f"CLIENT {self.client_id} ROUND {current_round} TESTING...")
 
         if global_config.LOCAL:
             plots_path = None
@@ -122,7 +123,7 @@ class ClassicClient(fl.client.NumPyClient):
                                     #   plot_filename=plot_filename
                                       )
 
-        print(f"END OF CLIENT TESTING\n\n")
+        logging.info(f"END OF CLIENT TESTING\n\n")
 
         # adding to the history
         for metric_name, metric_value in metrics.items():
@@ -220,7 +221,7 @@ def client_from_string(client_id, unet: models.UNet, optimizer, data_dir: str, c
 
     model_dir = f"{drd}/trained_models/model-{client_type_name}-lr{lr}-rd{rd}-ep{ec}-{d}"
     
-    print(f"Client {client_id} has directory: {model_dir}")
+    logging.info(f"Client {client_id} has directory: {model_dir}")
 
     if client_type_name in ["fedbn"]:
         return FedBNClient(client_id, unet, optimizer, data_dir, model_dir)
