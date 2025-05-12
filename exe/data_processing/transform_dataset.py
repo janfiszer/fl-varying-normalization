@@ -14,14 +14,10 @@ if __name__ == '__main__':
         n_patients = int(sys.argv[3])
 
 
-    paths_from_local_dirs = {"t1": "t1.npy",
-                             "t2": "t2.npy",
-                             "flair": "flair.npy",
-                             "mask": "mask.npy"
-                             }
+    paths_from_local_dirs = config.MODALITIES_AND_NPY_PATHS_FROM_LOCAL_DIR
     transformer = TransformVolumesToNumpySlices(target_root_dir,
                                                 current_data_dir,
-                                                mask_volume_filename="mask",
+                                                mask_volume_filename=config.MASK_DIR,
                                                 transpose_order=(2, 0, 1),
                                                 target_zero_ratio=0.8,
                                                 max_zero_ratio_on_slice_with_tumor=0.95)
