@@ -53,13 +53,13 @@ def load_evals(main_dir, model_loading_order, ds_order, key_word):
 
 
 def main():
-    all_models_path_st = os.path.join("C:/Users/JanFiszer/repos/fl-varying-normalization/trained_models/st")
+    all_models_path_st = os.path.join("C:/Users/JanFiszer/repos/fl-varying-normalization/trained_models")
 
     official_names_map = {"nonorm": "Raw", "minmax": "MinMax", "zscore": "Z-Score", "nyul": "Nyul", "fcm": "Fuzzy C-Mean", "whitestripe": "WhiteStripe"}
     order_st = official_names_map.keys()
-    official_names = list(official_names_map.values()) + ["Centralized"]
+    official_names = list(official_names_map.values()) + ["Centralized", "FedAvg"]
 
-    keyword = "metrics"
+    keyword = "std"
     st_evals = load_evals(all_models_path_st, order_st, order_st, keyword)
 
     for metric_name in ["val_gen_dice", "val_binarized_smoothed_dice", "val_binarized_jaccard_index"]:

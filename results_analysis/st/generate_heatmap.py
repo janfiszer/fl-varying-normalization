@@ -114,8 +114,7 @@ def single_heatmap(metric_file_name,
                    cmap="gist_rainbow"):
 
     metric_filename_top = f"metrics_{metric_file_name}.csv"
-    # std_filename_top = f"std_tables/std_{metric_file_name}.csv"
-    std_filename_top = metric_filename_top
+    std_filename_top = f"std_{metric_file_name}.csv"
     official_names = list(official_names_map.values())
 
     vmin = 0.2
@@ -292,7 +291,7 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 
 if __name__ == "__main__":
     # metrics = ["masked_ssim", "masked_mse", "zoomed_ssim"]
-    single_heatmap("val_binarized_smoothed_dice",
+    single_heatmap("val_gen_dice",
                    "Smoothed Dice",
                     official_names_map={"nonorm": "Raw", "minmax": "MinMax", "zscore": "Z-Score", "nyul": "Nyul", "fcm": "Fuzzy C-Mean", "whitestripe": "WhiteStripe"},
                     cmap="Spectral")
