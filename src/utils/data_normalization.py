@@ -175,28 +175,22 @@ def plot_histograms_one_slice(volumes, slice_index, brain_mask, filename=None):
     plt.close()
 
 
-def normalize_all_from_dir(data_dir: str,
+def normalize_all_from_dir(modalities_filepaths: Dict[str, List[str]],
                            output_dir: str,
-                           path_from_local_dir: Dict,
                            normalizers: List[Normalizer],
                            not_normalize: List = None,
-                           filtered_patients: List = None,
-                           save_histogram_slice_plots=True, 
-                           n_patients=-1,
+                           save_histogram_slice_plots=True,
                            divide_dataset=False):
     logging.log(logging.INFO, "Process of normalization and division af the dataset: STARTING...\n\n")
 
     if not_normalize is None:
         logging.log(logging.WARNING, "All the slices will be normalized. If for example there is a mask provide `not_normalize` to exclude it.\n")
 
-    # TODO: make it outside the function (too many parameters provided)
-    modalities_filepaths = fop.get_patients_filepaths(data_dir, path_from_local_dir, shuffle_local_dirs=True, n_patients=n_patients, filtered_patients=filtered_patients)
-
     # splitting the datasets into n subsets (n number of normalizers)
     n_normalization = len(normalizers)
     n_filepaths = len(list(modalities_filepaths.values())[0])
     if divide_dataset:
-        logging.info("`divide_dataset=True` so the dataset (provided in the `data_dir`) will be divided into subsets of equal size"
+        logging.info("`divide_dataset=True` so the filepaths (`modalities_filepaths`) will be divided into subsets of equal size"
                      "The number of subsets is equal to the number of `normalizers`.")
         subset_size = n_filepaths // n_normalization
         normalizers_with_indices_ranges = {normalizer: (i * subset_size, i * subset_size + 1) for i, normalizer in
@@ -205,7 +199,7 @@ def normalize_all_from_dir(data_dir: str,
         logging.info(f"{n_normalization} normalizers were provided, each of them will have a subset "
                                   f"of {subset_size} patients and will be in aproriate directories in {output_dir}.\n")
     else:
-        logging.info("`divide_dataset=False` so the dataset (provided in the `data_dir`) will normalized by all the "
+        logging.info("`divide_dataset=False` so the filepaths (`modalities_filepaths`) will normalized by all the "
                      "normalizers and will result in N datasets originating from the same data (N - number of normalizers)")
         normalizers_with_indices_ranges = {normalizer: (0, n_filepaths) for i, normalizer in
                                            enumerate(normalizers)}
@@ -335,7 +329,7 @@ def demonstrate_normalization(data_dir: str,
             plot_histograms_one_slice(normalizer_and_volumes, slice_index=[110, 125], brain_mask=volume > 0, filename=plot_path)
 
 
-def define_normalizers_and_more():
+def define_normalizers_and_more() -> list[Normalizer]:
     normalizers = [Normalizer("nonorm", NoNormalization),
                    Normalizer("nyul", NyulNormalize,
                               normalizer_kwargs={"output_min_value": -1.0, "output_max_value": 1.0}),

@@ -1,7 +1,7 @@
 import logging
 import sys
 from configs import config
-from src.utils import data_normalization
+from src.utils import data_normalization, files_operations as fop
 
 if __name__ == '__main__':
     if config.LOCAL:
@@ -22,12 +22,15 @@ if __name__ == '__main__':
         output_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/UCSF-normalized"
 
     normalizers = data_normalization.define_normalizers_and_more()
-    
-    data_normalization.normalize_all_from_dir(data_dir,
+
+    modalities_filepaths = fop.get_patients_filepaths(data_dir,
+                                                      config.MODALITIES_AND_NII_PATHS_FROM_LOCAL_DIR,
+                                                      shuffle_local_dirs=True,
+                                                      n_patients=n_patients)
+
+    data_normalization.normalize_all_from_dir(modalities_filepaths,
                                               output_dir,
-                                              config.MODALITIES_AND_NII_PATHS_FROM_LOCAL_DIR,
                                               normalizers,
                                               not_normalize=["mask"],
-                                              n_patients=n_patients,
                                               divide_dataset=True
                                               )

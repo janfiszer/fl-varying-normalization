@@ -83,9 +83,19 @@ class TransformVolumesToNumpySlices:
 
     def create_train_val_test_sets(self,
                                    paths_from_local_dirs,
-                                   train_size=0.75,
                                    n_patients=-1,
+                                   train_size=0.75,
                                    validation_size=0.1):
+        """
+        Main method - creates the train, test and validations sets with the appropriate split.
+        :param paths_from_local_dirs:  Dict in the form that `get_patients_filepaths()` returns.
+        It has the paths (regex) from the inner directories for each modality
+        e.g. { "t1": "*T1.nii.gz", "t2": "*T2.nii.gz", "flair": "*FLAIR.nii.gz", "mask": "*tumor_segmentation.nii.gz"}
+        :param train_size: 0-1 value representing the percentage of the train data samples (test_size = m_samples - (train_size+validation_size)
+        :param validation_size: 0-1 value representing the percentage of the validation data samples (test_size = m_samples - (train_size+validation_size)
+        :param n_patients: Upper limit of the utilized patients (in case more than we need it the dataset)
+        :return:
+        """
         # creating target directory if already exists.
         Path(self.target_root_dir).mkdir(exist_ok=False)
         # creating inner directories
@@ -133,6 +143,7 @@ class TransformVolumesToNumpySlices:
                                   f"test 3D MRI images")
 
     def save_slices(self, slices, patient_name, modality, main_dir, slice_min_index):
+        # saves all the provided slices with the appropriate name
         for slice_index in range(len(slices)):
             # creating the directory and the file name based on the patient name and the slice
             slice_dirname = f"slice{slice_min_index + slice_index}"
@@ -142,7 +153,24 @@ class TransformVolumesToNumpySlices:
             slice_path = os.path.join(slice_path, f"{modality}{self.SLICES_FILE_FORMAT}")
             np.save(slice_path, slices[slice_index])
 
-    def create_set(self, modality_paths, set_type_name):
+    def create_set(self, modality_paths: Dict[str, List[str]], set_type_name):
+        """
+        Creates a set where each patient has it own directory in the `self.main_dir` create a directory for each patient and slice
+        with corresponding modalities such that the directory structure is
+        │ `mian_dir`
+        │   ├── patient_name_slice e.g. UCSF_001_slice58
+        │   │   ├── network input modalities e.g.
+        │   │   ├── t1.npy
+        │   │   ├── t2.npy
+        │   │   ├── flair.npy
+        │   │   ├── `mask_dir`
+
+        :param modality_paths: Dict in the form that `get_patients_filepaths()` returns.
+        It has the paths (regex) from the inner directories for each modality
+        e.g. { "t1": "*T1.nii.gz", "t2": "*T2.nii.gz", "flair": "*FLAIR.nii.gz", "mask": "*tumor_segmentation.nii.gz"}
+        :param set_type_name: The set directory name.
+        """
+
         # verifying if all the provided parameters are valid
         if self.leading_modality is not None:
             if self.leading_modality in modality_paths.keys():
@@ -165,16 +193,6 @@ class TransformVolumesToNumpySlices:
         n_samples = len(modality_paths[self.leading_modality])
 
         logging.log(logging.INFO, f"Creating {main_dir}, which will have data from {n_samples} patients")
-
-        # in the `main_dir` create a directory for each patient and slice
-        # with corresponding modalities such that the directory structure is
-        # │ `mian_dir`
-        # │   ├── patient_name_slice e.g. UCSF_001_slice58
-        # │   │   ├── network input modalities e.g.
-        # │   │   ├── t1.npy
-        # │   │   ├── t2.npy
-        # │   │   ├── flair.npy
-        # │   │   ├── `mask_dir`
 
         utilized_slices_indices: List[Set] = []
 
@@ -229,13 +247,11 @@ class TransformVolumesToNumpySlices:
         remaining_modalities = list(modality_paths.keys())
         remaining_modalities.remove(self.leading_modality)
         logging.info(f"Processing all the other modalities: {remaining_modalities}")
+
         # having the `utilized_slices_range`
         for index in range(n_samples):
             for modality in remaining_modalities:
                 patient_name = get_youngest_dir(modality_paths[modality][index])
-                # the leading modality was already processed
-                if modality == self.leading_modality:
-                    continue
 
                 slice_index_range = utilized_slices_indices[index]
                 min_slices_index, max_slices_index = min(slice_index_range), max(slice_index_range)
@@ -351,7 +367,16 @@ def trim_image(image, target_image_size: Tuple[int, int]):
            y_pixels_margin:target_image_size[1] + y_pixels_margin]
 
 
-def get_patients_filepaths(data_dir: str, filepaths_from_data_dir: Dict, n_patients=-1, shuffle_local_dirs=False, filtered_patients: List = None):
+def get_patients_filepaths(data_dir: str, filepaths_from_data_dir: Dict, n_patients=-1, shuffle_local_dirs=False) -> Dict[str, List[str]]:
+    """
+    Iterates over the inner directories and returns all the files (filepaths) matching the filepath from the data_dir
+    :param data_dir: The directory where the data is stored
+    :param filepaths_from_data_dir: Dict of the paths (regex) from the inner directories for each modality
+    e.g. { "t1": "*T1.nii.gz", "t2": "*T2.nii.gz", "flair": "*FLAIR.nii.gz", "mask": "*tumor_segmentation.nii.gz"}
+    :param n_patients: Upper limit of the utilized patients (in case more than we need it the dataset)
+    :param shuffle_local_dirs: boolean for the value
+    :return: Directory with keys of `filepaths_from_data_dir.keys()` and found list of the found filepaths
+    """
     local_dirs = os.listdir(data_dir)
 
     if shuffle_local_dirs:
@@ -399,18 +424,17 @@ def get_patients_filepaths(data_dir: str, filepaths_from_data_dir: Dict, n_patie
                 f"For the provided parameters, found {modalities_counts} by reading from files (with limit of {n_patients} patients):\n"
                 f"{used_local_dirs_string}\n\n")
 
-    if filtered_patients:
-        logging.log(logging.INFO,
-            f"Filtering based on the `filtered_patients`...")
-        modalities_filepaths = filter_filepaths(modalities_filepaths, filtered_patients)
-
-        logging.info(f"After filtering there are {len(list(modalities_filepaths.values())[0])} filepaths remaing.")
-        logging.debug(f"`modalities_filepaths`={modalities_filepaths}")
-
-
     return modalities_filepaths
 
-def filter_filepaths(modalities_filepaths, filtered_patients):
+
+def filter_filepaths(modalities_filepaths: Dict[str, List[str]] = None, filtered_patients: List[str] = None):
+    """
+    Filters out the filepaths based on the patients names. If the filepath contains any of
+    the provided patients names (substring) it is left, otherwise it's filtered out.
+    :param modalities_filepaths: In the form that `get_patients_filepaths()` returns
+    :param filtered_patients: Filter and also in the form that `get_patients_filepaths()` returns
+    :return: Filtered filepaths.
+    """
     filtered_filepaths_dict = {}
 
     for modality, filepaths in modalities_filepaths.items():
