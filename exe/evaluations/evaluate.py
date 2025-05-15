@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from src.utils.files_operations import get_youngest_dir
 
+
 def perform_evaluate(test_dir, model_path):
     model_dir = os.path.dirname(model_path)
     representative_test_dir = get_youngest_dir(test_dir)
@@ -69,9 +70,9 @@ if __name__ == '__main__':
     logging.info(f"metrics: {metrics_values}")
     logging.info(f"stds: {stds}")
 
-    descriptive_metric = 'val_gen_dice'
 
     # create the filenames for saving the evaluations results
+    descriptive_metric = 'val_gen_dice'
     try:
         metric_filename = f"metrics_{representative_test_dir}_dice_{metrics_values[descriptive_metric]:.2f}.pkl"
         std_filename = f"std_{representative_test_dir}_dice_{metrics_values[descriptive_metric]:.2f}.pkl"
