@@ -83,34 +83,37 @@ class SegmentationDataset2DSlices(Dataset):
 
 
 class VolumeEvaluation(Dataset):
-    def __init__(self, ground_truth_path: str, predicted_path: str, squeeze_pred=True):
-        self.ground_truth_path = ground_truth_path
-        self.predicted_path = predicted_path
-        self.squeeze_pred = squeeze_pred
+    def __init__(self, ground_truth_path: str, predicted_path: str, mask_target_filename: str = "mask.npy", squeeze_pred=True, binarize_target: bool = True):
+        self.ground_truth_dir_paths = [os.path.join(ground_truth_path, dir_name) for dir_name in os.listdir(ground_truth_path)]
+        self.predicted_dir_paths = [os.path.join(predicted_path, dir_name) for dir_name in os.listdir(predicted_path)]
 
-        patient_ids = [files.split('-')[1] for files in os.listdir(ground_truth_path)]   # the second part of the file is the patients id
-        self.patient_ids = list(set(patient_ids))
+        self.mask_target_filename = mask_target_filename
+        self.squeeze_pred = squeeze_pred
+        self.binarize_target = binarize_target
 
     def __len__(self):
-        return len(self.patient_ids)
+        return len(self.ground_truth_dir_paths)
 
     def __getitem__(self, index):
-        patient_id = self.patient_ids[index]
+        # getting the patient dir by index
+        ground_truth_dir = self.ground_truth_dir_paths[index]
+        predicted_dir = self.predicted_dir_paths[index]
+        logging.info(f"Patient ground truth is: {ground_truth_dir}, predicted: {predicted_dir}")
 
-        print(f"Patient id: {patient_id}")
+        # loading the patient slices (target and predicted)
+        target_slices = [np.load(os.path.join(ground_truth_dir, filename, self.mask_target_filename))
+                         for filename in os.listdir(ground_truth_dir)]
+        predicted_slices = [np.load(os.path.join(predicted_dir, filename)) for filename in os.listdir(predicted_dir)]
 
-        target_img_paths = glob(os.path.join(self.ground_truth_path, f"*{patient_id}*{TransformVolumesToNumpySlices.SLICES_FILE_FORMAT}"))
-        predicted_img_paths = glob(os.path.join(self.predicted_path, f"*{patient_id}*{TransformVolumesToNumpySlices.SLICES_FILE_FORMAT}"))
-
-        target_slices = [np.load(fp) for fp in target_img_paths]
-        predicted_slices = [np.load(fp) for fp in predicted_img_paths]
-
+        # reducing a dimension of the predicted slices
         if self.squeeze_pred:
             predicted_slices = [pred[0] for pred in predicted_slices]
 
+        # stacking the slices
         target_volume = np.stack(target_slices)
         predicted_volume = np.stack(predicted_slices)
 
-        target_volume = target_volume > 0  # binarize
+        if self.binarize_target:
+            target_volume = (target_volume > 0).astype(int)
 
         return target_volume, predicted_volume
