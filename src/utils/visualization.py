@@ -1,5 +1,6 @@
 from typing import List
 import os
+from pathlib import Path
 import logging
 from src.utils.files_operations import get_patients_filepaths, extract_background_pixel_value
 from configs import config
@@ -301,3 +302,21 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
         plt.show()
 
     plt.close()
+
+
+def plot_distribution(metrics_values, histograms_dir_path):
+    Path(histograms_dir_path).mkdir(exist_ok=True)
+    # Plot and save histograms
+    for key, values in metrics_values.items():
+        plt.figure()  # Create a new figure
+        plt.hist(values, bins=100, color='blue', alpha=0.7)
+        plt.title(f"Histogram of {key}")
+        plt.xlabel("Value")
+        plt.ylabel("Frequency")
+
+        # Save to file
+        output_path = os.path.join(histograms_dir_path, f"{key}_histogram.png")
+        plt.savefig(output_path)
+        plt.close()  # Close the figure to free up memory
+        logging.debug(f"\t\t\t\tSaved histogram for {key} to {output_path}")
+

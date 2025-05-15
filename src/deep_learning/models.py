@@ -14,7 +14,7 @@ import torch.nn.functional as F
 
 from configs import config, creds
 from src.deep_learning import metrics
-from src.utils import files_operations as fop, visualization
+from src.utils import visualization
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 batch_print_freq = config.BATCH_PRINT_FREQ
@@ -290,7 +290,6 @@ class UNet(nn.Module):
             Path(plots_path).mkdir(exist_ok=True, parents=True)
 
         # initializing variables
-        n_steps = 0
         utilized_metrics = {metric_name: self.available_metrics[metric_name] for metric_name in config.METRICS}
 
         if wanted_metrics:
@@ -357,8 +356,6 @@ class UNet(nn.Module):
                             savepath=filepath
                             )
 
-                n_steps += 1
-
         if plots_path:
             # saving last batch
             if plot_last_batch_each_epoch:
@@ -378,13 +375,12 @@ class UNet(nn.Module):
             # saving histograms
             if plot_metrics_distribution:
                 histograms_dir_path = path.join(plots_path, "histograms")
-                Path(histograms_dir_path).mkdir(exist_ok=True)
-                self.plot_distribution(metrics_values, histograms_dir_path)
+                visualization.plot_distribution(metrics_values, histograms_dir_path)
                 logging.debug("\t\t\tAll distribution histograms saved.")
 
         logging.debug("\t\t\Eval ended computing metrics and standard deviation (if `comupte_std=True`).")
 
-        averaged_metrics, std_metrics = self._compute_average_std_metric(metrics_values, n_steps)
+        averaged_metrics, std_metrics = metrics.compute_average_std_metric(metrics_values)
         metrics_str = metrics.metrics_to_str(averaged_metrics, sep='\t')
 
         logging.info(f"\t\tFor evaluation set: {metrics_str}\n")
@@ -393,37 +389,6 @@ class UNet(nn.Module):
             return averaged_metrics, std_metrics
         else:
             return averaged_metrics
-
-    @staticmethod
-    def plot_distribution(metrics_values, histograms_dir_path):
-        # Plot and save histograms
-        for key, values in metrics_values.items():
-            plt.figure()  # Create a new figure
-            plt.hist(values, bins=100, color='blue', alpha=0.7)
-            plt.title(f"Histogram of {key}")
-            plt.xlabel("Value")
-            plt.ylabel("Frequency")
-
-            # Save to file
-            output_path = path.join(histograms_dir_path, f"{key}_histogram.png")
-            plt.savefig(output_path)
-            plt.close()  # Close the figure to free up memory
-            logging.debug(f"\t\t\t\tSaved histogram for {key} to {output_path}")
-            
-    @staticmethod
-    def _compute_average_std_metric(metrics_values, n_steps):
-        """
-        Computes the average for each of the metrics using the sum and the number of steps.
-        """
-        averaged_metrics = {}
-        std_metrics = {}
-
-        for metric_name, metric_values in metrics_values.items():
-            numpy_metrics_values = np.array(metric_values)
-            averaged_metrics[metric_name] = numpy_metrics_values.sum() / n_steps
-            std_metrics[metric_name] = numpy_metrics_values.std()
-
-        return averaged_metrics, std_metrics
 
 
 class DoubleConv(nn.Module):

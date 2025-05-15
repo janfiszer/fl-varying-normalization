@@ -4,7 +4,7 @@ from configs import config
 from torchmetrics.metric import Metric
 
 import torch
-
+import numpy as np
 
 def metrics_to_str(metrics: Dict[str, List[float]], starting_symbol: str = "", sep="\t"):
     metrics_epoch_str = starting_symbol
@@ -158,179 +158,24 @@ class JaccardIndex(Metric):
     def __repr__(self):
         return f"BinaryDice(smooth={self.smooth}, binarize_threshold={self.binarize_threshold})"
 
+
+def compute_average_std_metric(metrics_values: Dict[str, List[float]]) -> Tuple[Dict, Dict]:
+    """
+    Computes the average for each of the metrics using the sum and the number of steps.
+    """
+    averaged_metrics = {}
+    std_metrics = {}
+
+    for metric_name, metric_values in metrics_values.items():
+        numpy_metrics_values = np.array(metric_values)
+        averaged_metrics[metric_name] = numpy_metrics_values.sum() / len(metric_values)
+        std_metrics[metric_name] = numpy_metrics_values.std()
+
+    return averaged_metrics, std_metrics
+
 ####################
 # OLD SEGMENTATION #
 ####################
-
-class BinaryDiceLoss(torch.nn.Module):
-    """Dice loss of binary class
-    Args:
-        smooth: A float number to smooth loss, and avoid NaN error, default: 1
-        p: Denominator value: \sum{x^p} + \sum{y^p}, default: 2
-        predict: A tensor of shape [N, *]
-        target: A tensor of shape same with predict
-        reduction: Reduction method to apply, return mean over batch if 'mean',
-            return sum if 'sum', return a tensor of shape [N,] if 'none'
-    Returns:
-        Loss tensor according to arg reduction
-    Raise:
-        Exception if unexpected reduction
-    """
-
-    def __init__(self, device, smooth=1, p=2, binary_crossentropy=False):
-        super(BinaryDiceLoss, self).__init__()
-        self.smooth = smooth
-        self.p = p
-        self.binary_crossentropy = binary_crossentropy
-
-        if binary_crossentropy:
-            self.bce_loss = torch.nn.BCELoss().to(device)
-
-    def forward(self, predict, target):
-        assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
-        predict = predict.contiguous().view(predict.shape[0], -1)
-        target = target.contiguous().view(target.shape[0], -1)
-
-        num = torch.sum(torch.mul(predict, target), dim=1) + self.smooth
-        den = torch.sum(predict.pow(self.p) + target.pow(self.p), dim=1) + self.smooth
-
-        loss = 1 - num / den
-        loss = loss.mean()
-
-        if self.binary_crossentropy:
-            bce_loss = self.bce_loss(predict, target.float())
-            total_loss = loss + bce_loss
-        else:
-            total_loss = loss
-
-        return total_loss
-
-    def __repr__(self):
-        if self.binary_crossentropy:
-            return "Dice with BCE LOSS"
-        else:
-            return "Dice LOSS"
-
-
-def weighted_BCE(predict, target):
-    total_samples = torch.numel(target)
-    num_samples_0 = (target == 0).sum().item()
-    num_samples_1 = (target == 1).sum().item()
-
-    weight_0 = 0 if num_samples_0 == 0 else total_samples / (num_samples_0 * 2)
-    weight_1 = 0 if num_samples_1 == 0 else total_samples / (num_samples_1 * 2)
-
-    loss = -(weight_1 * (target * torch.log(predict)) + weight_0 * ((1 - target) * torch.log(1 - predict)))
-
-    return torch.mean(loss)
-
-
-def loss_generalized_dice(predict, target):
-    loss = 1 - generalized_dice(predict, target)
-
-    return loss
-
-
-def generalized_dice(preds, targets):
-    num_samples_0 = (targets == 0).sum().item()
-    num_samples_1 = (targets == 1).sum().item()
-
-    weight_0 = 0 if num_samples_0 == 0 else 1 / (num_samples_0 ** 2)
-    weight_1 = 0 if num_samples_1 == 0 else 1 / (num_samples_1 ** 2)
-
-    intersect = weight_1 * (preds * targets).sum() + weight_0 * ((1 - preds) * (1 - targets)).sum()
-    denominator = weight_1 * (preds + targets).sum() + weight_0 * ((1 - preds) + (1 - targets)).sum()
-
-    return 2 * intersect / denominator
-
-# def loss_generalized_dice(predict, target):
-#     dice = generalized_dice(predict, target)
-#     return 1 - dice
-
-def dice_2_class(predict, target, eps=1):
-    pred_mutl_target = (predict * target).sum()
-    pred_plus_target = (predict + target).sum()
-
-    opp_pred_mutl_target = ((1 - predict) * (1 - target)).sum()
-    opp_pred_plus_target = ((1 - predict) + (1 - target)).sum()
-
-    ones_faction = (pred_mutl_target + eps)/ (pred_plus_target + eps)
-    zeros_faction = (opp_pred_mutl_target + eps) / (opp_pred_plus_target + eps)
-
-    if ones_faction > 0.5:
-        # print(f"\t\t\t\tThe one fraction is equal to: {ones_faction}")
-        # TODO: not sure how to do it cause to have a good gradient, maybe setting like this is alright IDK
-        ones_faction = torch.tensor(0.5)
-
-    # print(f"\t\tNot weighted dice components: {pred_mutl_target+eps}/{pred_plus_target+eps} + {opp_pred_mutl_target+eps}/{opp_pred_plus_target+eps}")
-
-    dice_score = ones_faction + zeros_faction
-
-    if dice_score > 1:
-        dice_score = torch.tensor(1.0)
-    return dice_score
-
-class LossDice2Class(torch.nn.Module):
-    """Dice loss of binary class
-    Args:
-        smooth: A float number to smooth loss, and avoid NaN error, default: 1
-        p: Denominator value: \sum{x^p} + \sum{y^p}, default: 2
-        predict: A tensor of shape [N, *]
-        target: A tensor of shape same with predict
-        reduction: Reduction method to apply, return mean over batch if 'mean',
-            return sum if 'sum', return a tensor of shape [N,] if 'none'
-    Returns:
-        Loss tensor according to arg reduction
-    Raise:
-        Exception if unexpected reduction
-    """
-
-    def __init__(self, smooth=True):
-        super(LossDice2Class, self).__init__()
-        self.smooth = smooth
-
-    def forward(self, predict, target):
-        loss = 1 - dice_2_class(predict, target, eps=self.smooth)
-
-        return loss
-
-    def __repr__(self):
-        return "Domi LOSS"
-
-def loss_dice_2_class(predict, target):
-    dice = dice_2_class(predict, target)
-    return 1 - dice
-
-
-class DomiBinaryDiceLoss(torch.nn.Module):
-    """Dice loss of binary class
-    Args:
-        smooth: A float number to smooth loss, and avoid NaN error, default: 1
-        p: Denominator value: \sum{x^p} + \sum{y^p}, default: 2
-        predict: A tensor of shape [N, *]
-        target: A tensor of shape same with predict
-        reduction: Reduction method to apply, return mean over batch if 'mean',
-            return sum if 'sum', return a tensor of shape [N,] if 'none'
-    Returns:
-        Loss tensor according to arg reduction
-    Raise:
-        Exception if unexpected reduction
-    """
-
-    def __init__(self, weighted=True):
-        super(DomiBinaryDiceLoss, self).__init__()
-        if weighted:
-            self.bce_loss = weighted_BCE
-        else:
-            self.bce_loss = torch.nn.BCELoss().to(config.DEVICE)
-
-    def forward(self, predict, target):
-        loss = self.bce_loss(predict, target) + loss_dice_2_class(predict, target)
-
-        return loss
-
-    def __repr__(self):
-        return "Domi LOSS"
 
 
 def false_positive_ratio(preds, target):
