@@ -8,7 +8,7 @@ import importlib
 from configs import config, enums
 from src.deep_learning import metrics, datasets, models
 from torch.utils.data import DataLoader
-
+from pathlib import Path
 from src.utils.files_operations import get_youngest_dir
 
 
@@ -40,13 +40,16 @@ def perform_evaluate(test_dir, model_path):
 
     logging.info(f"Model and data loaded; evaluation starts...")
 
-    save_preds_dir = os.path.join(model_dir, "preds", representative_test_dir)
+    save_preds_dir = os.path.join(model_dir, "preds_from_nonorm", representative_test_dir)
     eval_path = os.path.join(model_dir, "eval", representative_test_dir)
 
     return unet.evaluate(testloader,
                          compute_std=True,
-                         save_preds_dir=save_preds_dir)
-                        #  plots_path=os.path.join(model_dir, "eval_visualization", representative_test_dir))
+                        #  save_preds_dir=save_preds_dir,
+                        #  plots_path=os.path.join(model_dir, "eval_visualization_from_nonorm", representative_test_dir), 
+                        #  plot_metrics_distribution=True,
+                        #  plot_every_batch_with_metrics=True 
+                         )
 
 
 if __name__ == '__main__':
@@ -60,7 +63,12 @@ if __name__ == '__main__':
 
     # extract directories names from the full paths
     model_dir = os.path.dirname(model_path)
-    representative_test_dir = get_youngest_dir(test_dir)
+    # representative_test_dir = get_youngest_dir(test_dir)
+    unwanted_representative_dir_names = ["train", "test", "validation"]
+
+    representative_test_dir = os.path.basename(test_dir)
+    if test_dir in unwanted_representative_dir_names:    
+        representative_test_dir = get_youngest_dir(test_dir)
 
     logging.info(f"Model dir is: {model_dir}")
 
@@ -84,9 +92,14 @@ if __name__ == '__main__':
         metric_filename = f"metrics_{representative_test_dir}_loss_{metrics_values[descriptive_metric]:.2f}.pkl"
         std_filename = f"std_{representative_test_dir}_loss_{metrics_values[descriptive_metric]:.2f}.pkl"
 
-    # save the evaluation results     
-    metric_filepath = os.path.join(model_dir, metric_filename)
-    std_filepath = os.path.join(model_dir, std_filename)
+    # save the evaluation results  
+
+    # create the directory where they will be stored   
+    metric_dir = os.path.join(model_dir, "metrics_from_nonorm")
+    Path(metric_dir).mkdir(exist_ok=True)
+
+    metric_filepath = os.path.join(metric_dir, metric_filename)
+    std_filepath = os.path.join(metric_dir, std_filename)
 
     with open(metric_filepath, "wb") as file:
         pickle.dump(metrics_values, file)
