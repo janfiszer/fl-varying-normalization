@@ -84,8 +84,8 @@ class SegmentationDataset2DSlices(Dataset):
 
 class VolumeEvaluation(Dataset):
     def __init__(self, ground_truth_path: str, predicted_path: str, mask_target_filename: str = "mask.npy", squeeze_pred=True, binarize_target: bool = True):
-        self.ground_truth_dir_paths = [os.path.join(ground_truth_path, dir_name) for dir_name in os.listdir(ground_truth_path)]
-        self.predicted_dir_paths = [os.path.join(predicted_path, dir_name) for dir_name in os.listdir(predicted_path)]
+        self.ground_truth_dir_paths = [os.path.join(ground_truth_path, dir_name) for dir_name in sorted(os.listdir(ground_truth_path))]
+        self.predicted_dir_paths = [os.path.join(predicted_path, dir_name) for dir_name in sorted(os.listdir(predicted_path))]
 
         self.mask_target_filename = mask_target_filename
         self.squeeze_pred = squeeze_pred
