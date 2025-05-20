@@ -17,6 +17,8 @@ if __name__ == '__main__':
         target_dir = sys.argv[1]
         predicted_dir = sys.argv[2]
 
+    representative_pred_dir = os.path.basename(predicted_dir)
+
     # initialing 3d torch dataset
     histogram_suffix = "histogram"
     eval_dataset = datasets.VolumeEvaluation(target_dir, predicted_dir)
@@ -56,6 +58,10 @@ if __name__ == '__main__':
     visualization.plot_distribution(metrics_scores,
                                     os.path.join(predicted_dir, os.path.join(predicted_dir, histogram_suffix)))
 
+    # logging results
+    logging.info(f"metrics: {averaged_metrics}")
+    logging.info(f"stds: {stds}")
+
     # saving metrics
-    metrics.save_metrics_and_std(averaged_metrics, predicted_dir, stds, descriptive_metric='gen_dice')
+    metrics.save_metrics_and_std(averaged_metrics, predicted_dir, stds, representative_pred_dir, descriptive_metric='gen_dice')
 

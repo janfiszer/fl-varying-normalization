@@ -177,19 +177,20 @@ def compute_average_std_metric(metrics_values: Dict[str, List[float]]) -> Tuple[
     return averaged_metrics, std_metrics
 
 
-def save_metrics_and_std(averaged_metrics, predicted_dir, stds=None, descriptive_metric='gen_dice'):
+def save_metrics_and_std(averaged_metrics, predicted_dir, stds=None, filename_prefix="", descriptive_metric='gen_dice'):
     # create the filenames for saving the evaluations results
     try:
-        metric_filename = f"metrics_dice_{averaged_metrics[descriptive_metric]:.2f}.pkl"
-        std_filename = f"std_dice_{averaged_metrics[descriptive_metric]:.2f}.pkl"
+        descriptive_metric_value = averaged_metrics[descriptive_metric]
     except KeyError:
         # in case the descriptive_metric wasn't found
+        fixed_descriptive_metric = 'gen_dice'
         logging.error(
-            f"The provided key ({descriptive_metric}) in the `metrics_values` doesn't existing taking `val_loss` as the key")
-        descriptive_metric = 'gen_dice'
+            f"The provided key (`{descriptive_metric}`) in the `metrics_values` doesn't existing taking `{fixed_descriptive_metric}` as the key")
+        descriptive_metric = fixed_descriptive_metric
+        descriptive_metric_value = averaged_metrics[descriptive_metric]
 
-        metric_filename = f"metrics_loss_{averaged_metrics[descriptive_metric]:.2f}.pkl"
-        std_filename = f"std_loss_{averaged_metrics[descriptive_metric]:.2f}.pkl"
+    metric_filename = f"metrics_{filename_prefix}_{descriptive_metric}_{descriptive_metric_value:.2f}.pkl"
+    std_filename = f"std_{filename_prefix}_{descriptive_metric}_{descriptive_metric_value:.2f}.pkl"
 
     # save the evaluation results
     metric_filepath = os.path.join(predicted_dir, metric_filename)
