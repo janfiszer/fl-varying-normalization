@@ -69,30 +69,16 @@ if __name__ == '__main__':
     logging.info(f"Model dir is: {model_dir}")
     logging.info(f"Representative name used for logging and as saving fingerprint is: {representative_test_dir}")
 
-    # the evaluate
-    metrics_values, stds = perform_evaluate(test_dir, model_path)
+    # the evaluation
+    metrics_values, stds = perform_evaluate(test_dir, model_path, representative_test_dir)
 
+    # logging results
     logging.info(f"metrics: {metrics_values}")
     logging.info(f"stds: {stds}")
-
-
-    # create the filenames for saving the evaluations results
-    descriptive_metric = 'val_gen_dice'
-    try:
-        metric_filename = f"metrics_{representative_test_dir}_dice_{metrics_values[descriptive_metric]:.2f}.pkl"
-        std_filename = f"std_{representative_test_dir}_dice_{metrics_values[descriptive_metric]:.2f}.pkl"
-    except KeyError:
-        # in case the descriptive_metric wasn't found
-        logging.error(f"The provided key ({descriptive_metric}) in the `metrics_values` doesn't existing taking `val_loss` as the key")
-        descriptive_metric = 'val_loss'
-        
-        metric_filename = f"metrics_{representative_test_dir}_loss_{metrics_values[descriptive_metric]:.2f}.pkl"
-        std_filename = f"std_{representative_test_dir}_loss_{metrics_values[descriptive_metric]:.2f}.pkl"
-
-    # save the evaluation results  
 
     # create the directory where they will be stored   
     metric_dir = os.path.join(model_dir, "metrics_from_nonorm")
     Path(metric_dir).mkdir(exist_ok=True)
 
+    # save the evaluation results
     metrics.save_metrics_and_std(metrics_values, metric_dir, stds, descriptive_metric='gen_dice')
