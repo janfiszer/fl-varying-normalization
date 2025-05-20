@@ -184,6 +184,8 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
     Visualize histograms of MRI intensity values across different normalization methods,
     with multiple patient scans overlaid in each plot.
     """
+    from matplotlib import rcParams
+    rcParams.update({'font.size': 13})
     # Get the filepaths for each normalization method using your existing function
     # The function should return a dictionary or similar structure
     # where keys are normalization methods and values are lists of file paths
@@ -196,7 +198,7 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
                                                                config.MODALITIES_AND_NPY_PATHS_FROM_LOCAL_DIR)
 
     methods = list(norm_filepaths.keys())
-    fig, axes = plt.subplots(len(from_local_dir_path), len(methods), figsize=(20, 16))
+    fig, axes = plt.subplots(len(from_local_dir_path), len(methods), figsize=(20, 10))
 
     x_ranges = {
         "t1":
@@ -261,7 +263,7 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
                     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
                     color = 'blue'
                     alpha = 0.2
-                    axes[row, col].plot(bin_centers, hist, color=color, alpha=alpha, linewidth=0.8)
+                    axes[row, col].plot(bin_centers, hist, color=color, alpha=alpha, linewidth=1)
 
                     current_max = np.max(hist)
                     if current_max > max_density:
