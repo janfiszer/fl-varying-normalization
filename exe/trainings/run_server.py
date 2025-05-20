@@ -20,23 +20,25 @@ if __name__ == "__main__":
         server_address = f"{socket.gethostname()}:{port_number}"
 
         if len(sys.argv) > 2:
-            strategu_name = sys.argv[2]
+            strategy_name = sys.argv[2]
         else:
-            strategu_name = "fedavg"
+            strategy_name = "fedavg"
             logging.info("Strategy not provided. FedAvg taken as the default one")
 
     logging.info("Server start")
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     unet = UNet().to(device)
 
-    strategy = strategy_from_string(unet, strategu_name)
+    strategy = strategy_from_string(unet, strategy_name)
 
     logging.info("\n\nSERVER STARTING...")
     logging.info("Strategy utilized: {}".format(strategy))
     logging.info("Server address: {}\n".format(server_address))
 
     if not config.LOCAL:
-        with open(f"{config.NODE_SERVER_DIRPATH}/{sys.argv[2]}{config.NODE_FILENAME}", 'w') as file:
+        node_filename = f"{config.NODE_SERVER_DIRPATH}/{strategy_name}{config.NODE_FILENAME}"
+        logging.info(f"Node id saved to {node_filename}")
+        with open(node_filename, 'w') as file:
             file.write(socket.gethostname())
 
     fl.server.start_server(
