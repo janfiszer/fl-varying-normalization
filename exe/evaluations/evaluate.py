@@ -1,9 +1,7 @@
 import logging
 import os
 import sys
-import pickle
 import torch
-import importlib
 
 from configs import config, enums
 from src.deep_learning import metrics, datasets, models
@@ -97,13 +95,4 @@ if __name__ == '__main__':
     metric_dir = os.path.join(model_dir, "metrics_from_nonorm")
     Path(metric_dir).mkdir(exist_ok=True)
 
-    metric_filepath = os.path.join(metric_dir, metric_filename)
-    std_filepath = os.path.join(metric_dir, std_filename)
-
-    with open(metric_filepath, "wb") as file:
-        pickle.dump(metrics_values, file)
-    logging.info(f"Metrics saved to : {metric_filepath}")
-
-    # with open(std_filepath, "wb") as file:
-    #     pickle.dump(stds, file)
-    # logging.info(f"Standard deviations saved to : {std_filepath}")
+    metrics.save_metrics_and_std(metrics_values, metric_dir, stds, descriptive_metric='gen_dice')

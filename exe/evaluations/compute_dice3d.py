@@ -56,30 +56,6 @@ if __name__ == '__main__':
     visualization.plot_distribution(metrics_scores,
                                     os.path.join(predicted_dir, os.path.join(predicted_dir, histogram_suffix)))
 
-    # create the filenames for saving the evaluations results
-    descriptive_metric = 'gen_dice'
+    # saving metrics
+    metrics.save_metrics_and_std(averaged_metrics, predicted_dir, stds, descriptive_metric='gen_dice')
 
-    # create the filenames for saving the evaluations results
-    try:
-        metric_filename = f"metrics_dice_{averaged_metrics[descriptive_metric]:.2f}.pkl"
-        std_filename = f"std_dice_{averaged_metrics[descriptive_metric]:.2f}.pkl"
-    except KeyError:
-        # in case the descriptive_metric wasn't found
-        logging.error(
-            f"The provided key ({descriptive_metric}) in the `metrics_values` doesn't existing taking `val_loss` as the key")
-        descriptive_metric = 'gen_dice'
-
-        metric_filename = f"metrics_loss_{metrics_objects[descriptive_metric]:.2f}.pkl"
-        std_filename = f"std_loss_{metrics_objects[descriptive_metric]:.2f}.pkl"
-
-    # save the evaluation results
-    metric_filepath = os.path.join(predicted_dir, metric_filename)
-    std_filepath = os.path.join(predicted_dir, std_filename)
-
-    with open(metric_filepath, "wb") as file:
-        pickle.dump(metrics_objects, file)
-    logging.info(f"Metrics saved to : {metric_filepath}")
-
-    with open(std_filepath, "wb") as file:
-        pickle.dump(stds, file)
-    logging.info(f"Standard deviations saved to : {std_filepath}")

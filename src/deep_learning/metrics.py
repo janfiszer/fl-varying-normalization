@@ -4,6 +4,9 @@ from configs import config
 from torchmetrics.metric import Metric
 
 import torch
+import logging
+import pickle
+import os
 import numpy as np
 
 def metrics_to_str(metrics: Dict[str, List[float]], starting_symbol: str = "", sep="\t"):
@@ -172,6 +175,34 @@ def compute_average_std_metric(metrics_values: Dict[str, List[float]]) -> Tuple[
         std_metrics[metric_name] = numpy_metrics_values.std()
 
     return averaged_metrics, std_metrics
+
+
+def save_metrics_and_std(averaged_metrics, predicted_dir, stds=None, descriptive_metric='gen_dice'):
+    # create the filenames for saving the evaluations results
+    try:
+        metric_filename = f"metrics_dice_{averaged_metrics[descriptive_metric]:.2f}.pkl"
+        std_filename = f"std_dice_{averaged_metrics[descriptive_metric]:.2f}.pkl"
+    except KeyError:
+        # in case the descriptive_metric wasn't found
+        logging.error(
+            f"The provided key ({descriptive_metric}) in the `metrics_values` doesn't existing taking `val_loss` as the key")
+        descriptive_metric = 'gen_dice'
+
+        metric_filename = f"metrics_loss_{averaged_metrics[descriptive_metric]:.2f}.pkl"
+        std_filename = f"std_loss_{averaged_metrics[descriptive_metric]:.2f}.pkl"
+
+    # save the evaluation results
+    metric_filepath = os.path.join(predicted_dir, metric_filename)
+    with open(metric_filepath, "wb") as file:
+        pickle.dump(averaged_metrics, file)
+    logging.info(f"Metrics saved to : {metric_filepath}")
+
+    # save the stds results
+    if stds:
+        std_filepath = os.path.join(predicted_dir, std_filename)
+        with open(std_filepath, "wb") as file:
+            pickle.dump(stds, file)
+        logging.info(f"Standard deviations saved to : {std_filepath}")
 
 ####################
 # OLD SEGMENTATION #
