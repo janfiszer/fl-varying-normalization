@@ -12,10 +12,8 @@ from pathlib import Path
 from src.utils.files_operations import get_youngest_dir
 
 
-def perform_evaluate(test_dir, model_path):
+def perform_evaluate(test_dir, model_path, representative_test_dir):
     model_dir = os.path.dirname(model_path)
-    representative_test_dir = get_youngest_dir(test_dir)
-
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     testset = datasets.SegmentationDataset2DSlices(test_dir,
@@ -71,6 +69,7 @@ if __name__ == '__main__':
         representative_test_dir = get_youngest_dir(test_dir)
 
     logging.info(f"Model dir is: {model_dir}")
+    logging.info(f"Representative name used for logging and as saving fingerprint is: {representative_test_dir}")
 
     # the evaluate
     metrics_values, stds = perform_evaluate(test_dir, model_path)
@@ -105,6 +104,6 @@ if __name__ == '__main__':
         pickle.dump(metrics_values, file)
     logging.info(f"Metrics saved to : {metric_filepath}")
 
-    with open(std_filepath, "wb") as file:
-        pickle.dump(stds, file)
-    logging.info(f"Standard deviations saved to : {std_filepath}")
+    # with open(std_filepath, "wb") as file:
+    #     pickle.dump(stds, file)
+    # logging.info(f"Standard deviations saved to : {std_filepath}")
