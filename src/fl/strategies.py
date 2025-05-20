@@ -148,7 +148,7 @@ def strategy_from_string(model, strategy_name, evaluate_fn=None):
         strategy_class = FedAdam
         kwargs["tau"] = config.TAU
 
-    elif strategy_name in ["fedavg", "fedbn"]:
+    elif strategy_name in ["fedavg", "fedbn", "fedmri"]:
         strategy_class = FedAvg
     else:
         raise ValueError(f"Wrong starategy name: {strategy_name}")

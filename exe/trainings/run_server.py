@@ -9,12 +9,6 @@ import flwr as fl
 from configs import config
 
 if __name__ == "__main__":
-    logging.info("Server start")
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    unet = UNet().to(device)
-
-    strategy = strategy_from_string(unet, "fedavg")
-
     if config.LOCAL:
         server_address = f"0.0.0.0:8088"
     else:
@@ -24,6 +18,18 @@ if __name__ == "__main__":
             port_number = config.PORT
 
         server_address = f"{socket.gethostname()}:{port_number}"
+
+        if len(sys.argv) > 2:
+            strategu_name = sys.argv[2]
+        else:
+            strategu_name = "fedavg"
+            logging.info("Strategy not provided. FedAvg taken as the default one")
+
+    logging.info("Server start")
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    unet = UNet().to(device)
+
+    strategy = strategy_from_string(unet, strategu_name)
 
     logging.info("\n\nSERVER STARTING...")
     logging.info("Strategy utilized: {}".format(strategy))
