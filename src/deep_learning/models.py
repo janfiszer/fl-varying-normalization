@@ -36,11 +36,12 @@ class UNet(nn.Module):
             - GroupNorm (the number of groups specified in the config)
     """
 
-    def __init__(self, criterion=None, descriptive_metric: str = None, bilinear=False, normalization=config.NORMALIZATION):
+    def __init__(self, criterion=None, descriptive_metric: str = None, bilinear=False, normalization=config.NORMALIZATION, fl_training: bool = False):
         super(UNet, self).__init__()
 
         self.criterion = criterion
         self.bilinear = bilinear
+        self.fl_training = fl_training
         if descriptive_metric:
             self.descriptive_metric = descriptive_metric
         else:
@@ -251,7 +252,7 @@ class UNet(nn.Module):
         if model_save_filename is not None:
             self.save(model_dir, model_save_filename)
 
-        if config.USE_WANDB:
+        if config.USE_WANDB and not self.fl_training:
             wandb.finish()
 
         return history
