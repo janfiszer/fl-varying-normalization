@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # Model
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     criterion = metrics.LossGeneralizedTwoClassDice(device)
-    unet = models.UNet(criterion).to(device)
+    unet = models.UNet(criterion, fl_training=True).to(device)
     optimizer = torch.optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
     client = client_from_string(client_id, unet, optimizer, data_dir, sys.argv[4])
 
