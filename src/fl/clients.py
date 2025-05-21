@@ -109,7 +109,7 @@ class ClassicClient(fl.client.NumPyClient):
         metrics = self._evaluate(current_round=config["current_round"])
         metric_without_loss = {k: v for k, v in metrics.items() if k != self.loss_name}
 
-        if metrics[self.loss_name] > self.current_best_loss:
+        if metrics[self.loss_name] < self.current_best_loss:
             self.model.save(self.client_dir, self.save_best_model_filename)
             logging.info(f"Model from round {config['current_round']} has the best loss value so far: {metrics[self.loss_name]}")
 
