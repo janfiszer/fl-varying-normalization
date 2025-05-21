@@ -22,7 +22,7 @@ class ClassicClient(fl.client.NumPyClient):
     """
         Overriding all the methods that NumPyClient requires.
     """
-    def __init__(self, client_id, model: models.UNet, optimizer, data_dir, model_dir):
+    def __init__(self, client_id, model: models.UNet, optimizer, data_dir, model_dir, loss_name="val_loss", save_best_model_filename=None):
         """
             Constructor
 
@@ -45,17 +45,21 @@ class ClassicClient(fl.client.NumPyClient):
         """
         self.client_id = client_id
         self.model = model
+        self.loss_name = loss_name
+        self.save_best_model_filename = save_best_model_filename
+        self.current_best_loss = float('inf')
+        self.optimizer = optimizer
+
         self.train_loader, self.test_loader, self.val_loader = load_data(data_dir,
                                                                          batch_size=global_config.BATCH_SIZE,
                                                                          with_num_workers=not global_config.LOCAL)
 
-        self.optimizer = optimizer
 
         self.history = {f"val_{metric_name}": [] for metric_name in global_config.METRICS}
-
         self.client_dir = os.path.join(model_dir,
                                        f"{self.__repr__()}_client_{self.client_id}")
 
+        # creating the client directory
         Path(self.client_dir).mkdir()
         logging.info(f"Client {client_id} with data from directory: {data_dir}: INITIALIZED\n")
 
@@ -103,9 +107,13 @@ class ClassicClient(fl.client.NumPyClient):
         self.set_parameters(parameters)
 
         metrics = self._evaluate(current_round=config["current_round"])
-        metric_without_loss = {k: v for k, v in metrics.items() if k != "val_loss"}
+        metric_without_loss = {k: v for k, v in metrics.items() if k != self.loss_name}
 
-        return metrics["val_loss"], len(self.test_loader.dataset), metric_without_loss
+        if metrics[self.loss_name] > self.current_best_loss:
+            self.model.save(self.client_dir, self.save_best_model_filename)
+            logging.info(f"Model from round {config['current_round']} has the best loss value so far: {metrics[self.loss_name]}")
+
+        return metrics[self.loss_name], len(self.test_loader.dataset), metric_without_loss
 
     def _evaluate(self, current_round: int):
 
@@ -119,8 +127,9 @@ class ClassicClient(fl.client.NumPyClient):
             plot_filename = f"round-{current_round}"
 
         metrics = self.model.evaluate(self.test_loader,
-                                    #   plots_path=plots_path,
-                                    #   plot_filename=plot_filename
+                                      plots_path=plots_path,
+                                      plot_last_batch_each_epoch=True,
+                                      epoch_number=current_round  # TODO: instead of epoch number back to filename?
                                       )
 
         logging.info(f"END OF CLIENT TESTING\n\n")
@@ -191,25 +200,9 @@ class FedMRIClient(ClassicClient):
         return f"FedMRI()"
 
 
-# def client_from_config(client_id, unet: models.UNet, optimizer, data_dir: str):
-#     """
-#         Returns a client basing on the config variables.
-#         Not used in the starting server and clients from the same file.
-#     """
-#
-#     if global_config.CLIENT_TYPE == enums.ClientTypes.FED_BN:
-#         return FedBNClient(client_id, unet, optimizer, data_dir)
-#
-#     elif global_config.CLIENT_TYPE == enums.ClientTypes.FED_MRI:
-#         return FedMRIClient(client_id, unet, optimizer, data_dir)
-#
-#     else:  # config.CLIENT_TYPE == global_config.ClientTypes.FED_AVG:
-#         return ClassicClient(client_id, unet, optimizer, data_dir)
-
-
 def client_from_string(client_id, unet: models.UNet, optimizer, data_dir: str, client_type_name):
     """
-        Returns a instance of a class basing on the given string. Requires the model (Pytorch net) and optimizer. 
+        Returns instance of a class basing on the given string. Requires the model (Pytorch net) and optimizer.
         Client ID is a string.
     """
     drd = global_config.DATA_ROOT_DIR
@@ -226,7 +219,7 @@ def client_from_string(client_id, unet: models.UNet, optimizer, data_dir: str, c
     if client_type_name in ["fedbn"]:
         return FedBNClient(client_id, unet, optimizer, data_dir, model_dir)
     elif client_type_name in ["fedmri"]:
-        return FedMRIClient(client_id, unet, optimizer, data_dir, model_dir)
+        return FedMRIClient(client_id, unet, optimizer, data_dir, model_dir, save_best_model_filename="best_model")
     elif  client_type_name in ["fedavg"]:
         return ClassicClient(client_id, unet, optimizer, data_dir, model_dir)
     
@@ -236,7 +229,7 @@ def client_from_string(client_id, unet: models.UNet, optimizer, data_dir: str, c
 
 def load_data(data_dir, batch_size, with_num_workers=True):
     """
-        Function returning training, test and validation loader based on samely named directories in the given directory (data_dir)
+        Function returning training, test and validation loader based on same as named directories in the given directory (data_dir)
     """
     train_dir = os.path.join(data_dir, "train")
     test_dir = os.path.join(data_dir, "test")

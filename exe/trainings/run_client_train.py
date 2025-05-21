@@ -10,6 +10,7 @@ if __name__ == "__main__":
         data_dir = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test"
         client_id = "1"
         server_address = "127.0.0.1:8088"
+        strategy_name = "fedmri"
         with_num_workers = False
     else:
         data_dir = sys.argv[1]
@@ -31,7 +32,7 @@ if __name__ == "__main__":
     criterion = metrics.LossGeneralizedTwoClassDice(device)
     unet = models.UNet(criterion, fl_training=True).to(device)
     optimizer = torch.optim.Adam(unet.parameters(), lr=config.LEARNING_RATE)
-    client = client_from_string(client_id, unet, optimizer, data_dir, sys.argv[4])
+    client = client_from_string(client_id, unet, optimizer, data_dir, strategy_name)
 
     logging.info(f"The retrieved server address is : {server_address}")
 

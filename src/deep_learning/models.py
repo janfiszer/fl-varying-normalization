@@ -80,7 +80,7 @@ class UNet(nn.Module):
         logits = self.outc(x)
         return logits
 
-    def save(self, dir_name: str, filename=None):
+    def save(self, dir_name: str, filename: str = None):
         """
         Saves the model to a given directory. Allows to change the name of the file, by default it is "model".
         """
@@ -252,7 +252,7 @@ class UNet(nn.Module):
             self.save(model_dir, model_save_filename)
 
         if config.USE_WANDB and not self.fl_training:
-            wandb.finish()
+            wandb.finish()  #TODO : finish when fl training=True
 
         return history
 
