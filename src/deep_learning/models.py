@@ -2,7 +2,6 @@ import logging
 from os import path
 import pickle
 from pathlib import Path
-import matplotlib.pyplot as plt
 import wandb
 import time
 from typing import Callable

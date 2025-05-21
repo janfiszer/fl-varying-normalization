@@ -1,6 +1,5 @@
 import logging
 import os
-from glob import glob
 from typing import List, Tuple, Union
 
 from src.utils.files_operations import TransformVolumesToNumpySlices

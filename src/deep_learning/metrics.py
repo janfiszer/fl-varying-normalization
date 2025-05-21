@@ -1,6 +1,5 @@
 from typing import Dict, List, Any, Optional, Sequence, Tuple, Union, Literal
 
-from configs import config
 from torchmetrics.metric import Metric
 
 import torch
@@ -8,6 +7,7 @@ import logging
 import pickle
 import os
 import numpy as np
+
 
 def metrics_to_str(metrics: Dict[str, List[float]], starting_symbol: str = "", sep="\t"):
     metrics_epoch_str = starting_symbol

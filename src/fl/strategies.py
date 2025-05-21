@@ -5,13 +5,9 @@ from shutil import copy2
 from pathlib import Path
 import torch
 import logging
-import numpy as np
 
-from functools import reduce
-from torch.utils.data import DataLoader
 
-from src.deep_learning import datasets, models
-from src.utils import files_operations
+from src.deep_learning import models
 from configs import config
 
 import flwr as fl
@@ -19,7 +15,7 @@ from flwr.server.criterion import ClientProxy
 from flwr.common import Scalar, FitRes, Parameters, logger, Metrics, NDArrays, parameters_to_ndarrays, \
     ndarrays_to_parameters, NDArray
 from flwr.server.strategy import Strategy
-from flwr.server.strategy import FedAdam, FedAvg, FedYogi, FedProx, FedAdagrad, FedAvgM, aggregate
+from flwr.server.strategy import FedAdam, FedAvg
 
 from typing import List, Tuple, Dict, Union, Optional, Type, Callable
 from collections import OrderedDict

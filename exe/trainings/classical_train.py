@@ -1,8 +1,5 @@
-import os
 import sys
 from shutil import copy2
-from pathlib import Path
-import torch
 
 from src.deep_learning.datasets import *
 from src.deep_learning.models import *

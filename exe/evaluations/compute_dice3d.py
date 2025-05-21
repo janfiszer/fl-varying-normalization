@@ -1,8 +1,6 @@
 import logging
 import os
 import sys
-import pickle
-import numpy as np
 from configs import config
 from src.deep_learning import metrics, datasets
 from src.utils import visualization
