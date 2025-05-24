@@ -13,6 +13,7 @@ import torch
 from flwr.common.typing import NDArrays, Scalar
 from torch.utils.data import DataLoader
 
+import configs.config
 from configs import enums, config as global_config
 from src.deep_learning import models
 from src.deep_learning.datasets import SegmentationDataset2DSlices
@@ -201,6 +202,44 @@ class FedMRIClient(ClassicClient):
         return f"FedMRI()"
 
 
+class FedDelayClient(ClassicClient):
+    """Like FedMRI `changes only the parameters operation (set and get) skipping the decoder part. Only encoder in global`
+    But only after certain point (defined by `round_to_personalize`), at first rounds works like FedAvg"""
+
+    def __init__(self, round_to_personalize=global_config.FEDDELAY_ROUND, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.round_to_personalize = round_to_personalize
+        self.current_round = 0
+
+    def set_parameters(self, parameters: NDArrays):
+        self.model.train()
+
+        old_state_dict = self.model.state_dict()
+
+        # when sufficient number of rounds start to finetune
+        if self.current_round > self.round_to_personalize:
+            logging.info(f"Round {self.current_round} (>{self.round_to_personalize}, the personalization begins.")
+            # FedMRI
+            layer_names = {index: layer_name for index, layer_name in enumerate(old_state_dict.keys())
+                           if "down" in layer_name or "inc" in layer_name}
+            selected_parameters = [parameters[i] for i in layer_names.keys()]
+            param_dict = zip(layer_names.values(), selected_parameters)
+        else:
+            logging.debug(f"Round {self.current_round} (<{self.round_to_personalize}, still using FedAvg averaging.")
+            # FedAvg
+            param_dict = zip(old_state_dict.keys(), parameters)
+
+        state_dict = OrderedDict({k: torch.tensor(v) for k, v in param_dict})
+        self.model.load_state_dict(state_dict, strict=False)
+
+    def fit(self, parameters: NDArrays, config):
+        self.current_round = config["current_round"]
+        return super().fit(parameters, config)
+
+    def __repr__(self):
+        return f"FedDelay"
+
+
 def client_from_string(client_id, unet: models.UNet, optimizer, data_dir: str, client_type_name):
     """
         Returns instance of a class basing on the given string. Requires the model (Pytorch net) and optimizer.
@@ -217,11 +256,27 @@ def client_from_string(client_id, unet: models.UNet, optimizer, data_dir: str, c
     
     logging.info(f"Client {client_id} has directory: {model_dir}")
 
+
+    args = (client_id, unet, optimizer, data_dir, model_dir)
+    kwargs = {
+        "client_id": client_id,
+        "unet": unet,
+        "optimizer": optimizer,
+        "data_dir": data_dir,
+        "model_dir": model_dir
+    }
+
+    personalized_methods = ["fedbn", "fedmri", "feddalay"]
+    if client_type_name in personalized_methods:
+        kwargs["save_best_model_filename"] = "best_model"
+
     if client_type_name in ["fedbn"]:
-        return FedBNClient(client_id, unet, optimizer, data_dir, model_dir, save_best_model_filename="best_model")
+        return FedBNClient(*args)
     elif client_type_name in ["fedmri"]:
-        return FedMRIClient(client_id, unet, optimizer, data_dir, model_dir, save_best_model_filename="best_model")
-    elif  client_type_name in ["fedavg"]:
+        return FedMRIClient(*args)
+    elif client_type_name in ["feddelay"]:
+        return FedDelayClient(global_config.FEDDELAY_ROUND, *args)
+    elif client_type_name in ["fedavg", "fedadam"]:
         return ClassicClient(client_id, unet, optimizer, data_dir, model_dir)
     
     else:
@@ -232,9 +287,9 @@ def load_data(data_dir, batch_size, with_num_workers=True):
     """
         Function returning training, test and validation loader based on same as named directories in the given directory (data_dir)
     """
-    train_dir = os.path.join(data_dir, "train")
-    test_dir = os.path.join(data_dir, "test")
-    val_dir = os.path.join(data_dir, "validation")
+    train_dir = os.path.join(data_dir, global_config.TRAIN_DIR_NAME)
+    test_dir = os.path.join(data_dir, global_config.TEST_DIR_NAME)
+    val_dir = os.path.join(data_dir, global_config.VAL_DIR_NAME)
 
     args = (global_config.USED_MODALITIES, global_config.MASK_DIR, True)
 
