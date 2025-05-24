@@ -41,10 +41,10 @@ def perform_evaluate(test_dir, model_path, representative_test_dir):
 
     return unet.evaluate(testloader,
                          compute_std=True,
-                        #  save_preds_dir=save_preds_dir,
-                        #  plots_path=os.path.join(model_dir, "eval_visualization_from_nonorm", representative_test_dir), 
-                        #  plot_metrics_distribution=True,
-                        #  plot_every_batch_with_metrics=True 
+                         save_preds_dir=save_preds_dir,
+                         plots_path=os.path.join(model_dir, "eval_visualization_from_nonorm", representative_test_dir), 
+                         plot_metrics_distribution=True,
+                         plot_last_batch_each_epoch=True 
                          )
 
 
@@ -81,4 +81,4 @@ if __name__ == '__main__':
     Path(metric_dir).mkdir(exist_ok=True)
 
     # save the evaluation results
-    metrics.save_metrics_and_std(metrics_values, metric_dir, stds, descriptive_metric='gen_dice')
+    metrics.save_metrics_and_std(metrics_values, metric_dir, stds, filename_prefix=representative_test_dir, descriptive_metric='val_gen_dice')

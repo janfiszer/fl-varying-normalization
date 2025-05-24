@@ -111,7 +111,8 @@ class ClassicClient(fl.client.NumPyClient):
 
         if metrics[self.loss_name] < self.current_best_loss:
             self.model.save(self.client_dir, self.save_best_model_filename)
-            logging.info(f"Model from round {config['current_round']} has the best loss value so far: {metrics[self.loss_name]}")
+            logging.info(f"Model from round {config['current_round']} has the best loss value so far: {metrics[self.loss_name]:.3f}. Current best is {self.current_best_loss:.3f}")
+            self.current_best_loss = metrics[self.loss_name]
 
         return metrics[self.loss_name], len(self.test_loader.dataset), metric_without_loss
 
@@ -217,7 +218,7 @@ def client_from_string(client_id, unet: models.UNet, optimizer, data_dir: str, c
     logging.info(f"Client {client_id} has directory: {model_dir}")
 
     if client_type_name in ["fedbn"]:
-        return FedBNClient(client_id, unet, optimizer, data_dir, model_dir)
+        return FedBNClient(client_id, unet, optimizer, data_dir, model_dir, save_best_model_filename="best_model")
     elif client_type_name in ["fedmri"]:
         return FedMRIClient(client_id, unet, optimizer, data_dir, model_dir, save_best_model_filename="best_model")
     elif  client_type_name in ["fedavg"]:
