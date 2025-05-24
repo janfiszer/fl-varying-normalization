@@ -218,6 +218,7 @@ class FedDelayClient(ClassicClient):
 
         # when sufficient number of rounds start to finetune
         if self.current_round > self.round_to_personalize:
+            # TODO: make the personalized aggregation more flexible. For this change FedMRI and FedBN
             logging.info(f"Round {self.current_round} (>{self.round_to_personalize}), the personalization is ON.")
             # FedMRI.set_parameters()
             layer_names = {index: layer_name for index, layer_name in enumerate(old_state_dict.keys())

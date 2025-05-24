@@ -137,7 +137,7 @@ class JaccardIndex(Metric):
         assert preds.shape == targets.shape
 
         intersection, denominator = self.compute_jaccard_components(preds, targets, self.binarize_threshold)
-        self.intersection += intersection  # TODO: check
+        self.intersection += intersection
         self.union += denominator - intersection
 
     def compute(self) -> torch.Tensor:
