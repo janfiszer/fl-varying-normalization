@@ -218,14 +218,14 @@ class FedDelayClient(ClassicClient):
 
         # when sufficient number of rounds start to finetune
         if self.current_round > self.round_to_personalize:
-            logging.info(f"Round {self.current_round} (>{self.round_to_personalize}, the personalization begins.")
-            # FedMRI
+            logging.info(f"Round {self.current_round} (>{self.round_to_personalize}), the personalization is ON.")
+            # FedMRI.set_parameters()
             layer_names = {index: layer_name for index, layer_name in enumerate(old_state_dict.keys())
                            if "down" in layer_name or "inc" in layer_name}
             selected_parameters = [parameters[i] for i in layer_names.keys()]
             param_dict = zip(layer_names.values(), selected_parameters)
         else:
-            logging.debug(f"Round {self.current_round} (<{self.round_to_personalize}, still using FedAvg averaging.")
+            logging.debug(f"Round {self.current_round} (<{self.round_to_personalize}), still using FedAvg averaging (no personalization).")
             # FedAvg
             param_dict = zip(old_state_dict.keys(), parameters)
 

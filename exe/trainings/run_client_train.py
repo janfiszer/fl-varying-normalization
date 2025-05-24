@@ -8,9 +8,9 @@ if __name__ == "__main__":
     # moving on ares/athena to the repo directory
     if config.LOCAL:
         data_dir = "C:\\Users\\JanFiszer\\data\\mri\\segmentation_ucsf_whitestripe_test"
-        client_id = "1"
+        client_id = "2"
         server_address = "127.0.0.1:8088"
-        strategy_name = "fedmri"
+        strategy_name = "feddelay"
         with_num_workers = False
     else:
         data_dir = sys.argv[1]

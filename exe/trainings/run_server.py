@@ -11,7 +11,7 @@ from configs import config
 if __name__ == "__main__":
     if config.LOCAL:
         server_address = f"0.0.0.0:8088"
-        strategy_name = "fedmri"
+        strategy_name = "feddelay"
     else:
         if len(sys.argv) > 1:
             port_number = sys.argv[1]
