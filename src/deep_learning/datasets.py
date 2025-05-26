@@ -99,10 +99,12 @@ class VolumeEvaluation(Dataset):
         predicted_dir = self.predicted_dir_paths[index]
         logging.info(f"Patient ground truth is: {ground_truth_dir}, predicted: {predicted_dir}")
 
+        print(os.listdir(ground_truth_dir))
+        print(os.listdir(predicted_dir))
         # loading the patient slices (target and predicted)
         target_slices = [np.load(os.path.join(ground_truth_dir, filename, self.mask_target_filename))
-                         for filename in os.listdir(ground_truth_dir)]
-        predicted_slices = [np.load(os.path.join(predicted_dir, filename)) for filename in os.listdir(predicted_dir)]
+                         for filename in sorted(os.listdir(ground_truth_dir))]
+        predicted_slices = [np.load(os.path.join(predicted_dir, filename)) for filename in sorted(os.listdir(predicted_dir))]
 
         # reducing a dimension of the predicted slices
         if self.squeeze_pred:
