@@ -185,7 +185,7 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
     with multiple patient scans overlaid in each plot.
     """
     from matplotlib import rcParams
-    rcParams.update({'font.size': 13})
+    rcParams.update({'font.size': 18})
     # Get the filepaths for each normalization method using your existing function
     # The function should return a dictionary or similar structure
     # where keys are normalization methods and values are lists of file paths
@@ -287,12 +287,16 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
                 axes[row, col].set_title(config.OFFICIAL_NORMALIZATION_NAMES[method])
 
             # Set axes labels
-            if row == len(modalities) - 1:
+            if row == len(modalities) - 1 and col == 3:
                 axes[row, col].set_xlabel('Voxel intensity value')
 
             # Set y-label only for leftmost column
             if col == 0:
-                axes[row, col].set_ylabel(f'{config.OFFICIAL_MODALITIES_NAMES[modality]}\nStandardized amount of intensity')
+                if row == 1:
+                    axes[row, col].set_ylabel(f'Standardized amount of intensity\n{config.OFFICIAL_MODALITIES_NAMES[modality]}')
+                else:
+                    axes[row, col].set_ylabel(f'{config.OFFICIAL_MODALITIES_NAMES[modality]}')
+
 
             # Set consistent y-axis limits across all plots
 
