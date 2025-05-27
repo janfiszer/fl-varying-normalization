@@ -220,11 +220,17 @@ class FedDelayClient(ClassicClient):
         if self.current_round > self.round_to_personalize:
             # TODO: make the personalized aggregation more flexible. For this change FedMRI and FedBN
             logging.info(f"Round {self.current_round} (>{self.round_to_personalize}), the personalization is ON.")
-            # FedMRI.set_parameters()
+            # FedBN.set_parameters()
             layer_names = {index: layer_name for index, layer_name in enumerate(old_state_dict.keys())
-                           if "down" in layer_name or "inc" in layer_name}
+                if "norm" not in layer_name}
             selected_parameters = [parameters[i] for i in layer_names.keys()]
             param_dict = zip(layer_names.values(), selected_parameters)
+            
+            # FedMRI.set_parameters()
+            # layer_names = {index: layer_name for index, layer_name in enumerate(old_state_dict.keys())
+            #                if "down" in layer_name or "inc" in layer_name}
+            # selected_parameters = [parameters[i] for i in layer_names.keys()]
+            # param_dict = zip(layer_names.values(), selected_parameters)
         else:
             logging.debug(f"Round {self.current_round} (<{self.round_to_personalize}), still using FedAvg averaging (no personalization).")
             # FedAvg
