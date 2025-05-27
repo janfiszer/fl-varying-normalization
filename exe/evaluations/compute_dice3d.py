@@ -1,4 +1,5 @@
 import logging
+import pickle
 import os
 import sys
 from configs import config
@@ -35,13 +36,18 @@ if __name__ == '__main__':
                        "binarized_jaccard_index": jaccard_index,
                        }
 
-    metrics_scores = {metric_name: [] for metric_name in metrics_objects.keys()}
+    metrics_scores = {metric_name: {} for metric_name in metrics_objects.keys()}
 
     for batch_index, batch in enumerate(dataloader):
+        # loading  data for evaluation
         targets_cpu, predicted_cpu = batch[0], batch[1]
-
         targets = targets_cpu
         predicted = predicted_cpu
+
+        # getting the currently processed slice filename
+        patient_target_path = dataloader.dataset.predicted_dir_paths[batch_index]
+        patient_name = patient_target_path.split(os.path.sep)[-1]
+        logging.info(f"Evaluated patient is: {patient_name}")
 
         logging.debug(f"Target pixel sum {targets.sum()}")
         logging.debug(f"Predicted pixel sum {predicted.sum()}")
@@ -49,17 +55,24 @@ if __name__ == '__main__':
 
         for metric_name, metrics_obj in metrics_objects.items():
             metric_value = metrics_obj(predicted, targets)
-            metrics_scores[metric_name].append(metric_value)
+            metrics_scores[metric_name][patient_name] = metric_value
             logging.info(f"{metric_name}: {metric_value}")
 
-    averaged_metrics, stds = metrics.compute_average_std_metric(metrics_scores)
-    visualization.plot_distribution(metrics_scores,
-                                    os.path.join(predicted_dir, os.path.join(predicted_dir, histogram_suffix)))
+    logging.info(f"Metrics for each patient {metrics_scores}")
+
+    individual_patients_metrics_path = os.path.join(predicted_dir, "individual_3ddice.pkl")
+    with open(individual_patients_metrics_path, "wb") as file:
+        pickle.dump(metrics_scores, file)
+
+    logging.info(f"Individual metrics saved to: {individual_patients_metrics_path}")
+    # averaged_metrics, stds = metrics.compute_average_std_metric(metrics_scores)
+    # visualization.plot_distribution(metrics_scores,
+    #                                 os.path.join(predicted_dir, os.path.join(predicted_dir, histogram_suffix)))
 
     # logging results
-    logging.info(f"metrics: {averaged_metrics}")
-    logging.info(f"stds: {stds}")
+    # logging.info(f"metrics: {averaged_metrics}")
+    # logging.info(f"stds: {stds}")
 
     # saving metrics
-    metrics.save_metrics_and_std(averaged_metrics, predicted_dir, stds, representative_pred_dir, descriptive_metric='gen_dice')
+    # metrics.save_metrics_and_std(averaged_metrics, predicted_dir, stds, representative_pred_dir, descriptive_metric='gen_dice')
 
