@@ -27,7 +27,7 @@ def perform_evaluate(test_dir, model_path, representative_test_dir):
 
     try:
         logging.info(f"Loading model from: {model_path}")
-        unet.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        unet.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
     except FileNotFoundError:
         logging.error(f"You are in {os.getcwd()} and there is no given path")
         exit()
