@@ -16,10 +16,11 @@
 ## Specyfikacja partycji
 #SBATCH --partition=plgrid-gpu-a100
 ## Plik ze standardowym wyjĹ›ciem
-##SBATCH --output="logs/trainings/st/layer_norm_test_more_metrics/zscoreNoNorm.out"
-#SBATCH --error="logs/trainings/st/layer_norm_test_more_metrics/zscoreNoNorm.err"
+#SBATCH --output="logs/trainings/st/rerun3_nonorm.out"
 
 cd $HOME/repos/fl-varying-normalization
 
-srun $PLG_GROUPS_STORAGE/plggflmri/new_conda/fl/bin/python -u -m exe.trainings.classical_train \
-    /net/pr2/projects/plgrid/plggflmri/Data/Internship/FL/varying-normalization/data/zscore
+# srun $PLG_GROUPS_STORAGE/plggflmri/new_conda/fl/bin/python -u -m exe.trainings.classical_train \
+#     /net/pr2/projects/plgrid/plggflmri/Data/Internship/FL/varying-normalization/data/nonorm
+
+$PLG_GROUPS_STORAGE/plggflmri/new_conda/fl/bin/python -u -m exe.trainings.classical_train /net/pr2/projects/plgrid/plggflmri/Data/Internship/FL/varying-normalization/data/nonorm
