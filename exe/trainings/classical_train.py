@@ -23,11 +23,11 @@ if __name__ == '__main__':
         data_dir = sys.argv[1]
         if data_dir == "all":
             data_root_dir = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/FL/varying-normalization/data"
-            train_directories = [os.path.join(data_root_dir, data_inner_dir, "train") for data_inner_dir in os.listdir(data_root_dir)]
-            validation_directory =[os.path.join(data_root_dir, data_inner_dir, "validation") for data_inner_dir in os.listdir(data_root_dir)]
+            train_directories = [os.path.join(data_root_dir, data_inner_dir, config.TRAIN_DIR_NAME) for data_inner_dir in os.listdir(data_root_dir)]
+            validation_directory =[os.path.join(data_root_dir, data_inner_dir, config.VAL_DIR_NAME) for data_inner_dir in os.listdir(data_root_dir)]
         else:
-            train_directories = os.path.join(data_dir, "train")
-            validation_directory = os.path.join(data_dir, "validation")
+            train_directories = os.path.join(data_dir, config.TRAIN_DIR_NAME)
+            validation_directory = os.path.join(data_dir, config.VAL_DIR_NAME)
 
         if len(sys.argv) > 2:
             num_epochs = int(sys.argv[2])
