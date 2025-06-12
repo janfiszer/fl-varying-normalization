@@ -326,3 +326,80 @@ def plot_distribution(metrics_values, histograms_dir_path):
         plt.close()  # Close the figure to free up memory
         logging.debug(f"\t\t\t\tSaved histogram for {key} to {output_path}")
 
+
+def plot_dice_scores_combined(all_scores, title="DICE Scores Comparison", figsize=(18, 6), jitter_width=0.7, patient_plot_zone_width=50):
+    """
+    Create a single scatter plot with all models on the same plot.
+    Patients are aligned across models (same x-position for same patient).
+
+    Args:
+        all_scores: dict {model_name: {patient_id: dice_score}}
+        title: Plot title
+        figsize: Figure size tuple
+    """
+    plt.figure(figsize=figsize)
+
+    # Get all unique patient IDs
+    all_patients = set()
+    for model_scores in all_scores.values():
+        all_patients.update(model_scores.keys())
+    all_patients = sorted(list(all_patients))
+
+    # Create patient ID to index mapping
+    patient_to_idx = {patient: i for i, patient in enumerate(all_patients)}
+
+    # Define colors and markers for different models
+    colors = ['red', 'black', 'purple', 'blue', 'green', 'orange', 'brown', 'pink', 'purple']
+    markers = ['*', 'X', 'o', '^', 'X', 'X', 'X', 'X', 'X']
+
+    model_names = list(all_scores.keys())
+    num_models = len(model_names)
+
+    # Calculate jitter offset for each model to spread them horizontally
+    if num_models > 1:
+        jitter_step = jitter_width / (num_models - 1)
+        jitter_start = -jitter_width / 2
+    else:
+        jitter_step = 0
+        jitter_start = 0
+
+    for i, model_name in enumerate(model_names):
+        x_positions = []
+        y_scores = []
+
+        # Calculate jitter offset for this model
+        jitter_offset = jitter_start + (i * jitter_step)
+
+        for patient_id, score in all_scores[model_name].items():
+            x_positions.append(patient_to_idx[patient_id] + jitter_offset)
+            y_scores.append(score)
+
+        # Use modulo to cycle through colors and markers if there are many models
+        color = colors[i % len(colors)]
+        marker = markers[i % len(markers)]
+
+        plt.scatter(x_positions, y_scores,
+                    c=color, marker=marker, s=60, alpha=0.7,
+                    label=model_name, edgecolors='black', linewidth=0.5)
+
+    plt.xlabel('Patient ID')
+    plt.ylabel('DICE')
+    plt.title(title)
+    plt.grid(axis='y', alpha=0.3)
+    plt.grid(axis='x', alpha=0.1, linewidth=patient_plot_zone_width, color="blue")
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+
+    # Set y-axis limits similar to the example
+    plt.ylim(0.0, 1.0)
+
+    # Set x-axis ticks to show patient names
+    plt.xticks(range(len(all_patients)), all_patients, rotation=45, ha='right')
+
+    # If there are too many patients, show only every nth patient
+    if len(all_patients) > 15:
+        tick_positions = list(range(0, len(all_patients), max(1, len(all_patients) // 15)))
+        tick_labels = [all_patients[i][-10:-6] for i in tick_positions]
+        plt.xticks(tick_positions, tick_labels, ha='right')
+
+    plt.tight_layout()
+    plt.show()
