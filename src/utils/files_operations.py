@@ -427,6 +427,21 @@ def get_patients_filepaths(data_dir: str, filepaths_from_data_dir: Dict, n_patie
     return modalities_filepaths
 
 
+def sort_by_substring_order(main_list, order_list):
+    # Create a key function to determine the sort order
+    def sort_key(string):
+        for index, substring in enumerate(order_list):
+            if substring in string:
+                return index
+        return len(order_list)  # Put items without a match at the end
+
+    # Sort the main list using the key function
+    sorted_list = sorted(main_list, key=sort_key)
+
+    print(f"Sorted list: {sorted_list}, before {main_list}")
+    return sorted_list
+
+
 def filter_filepaths(modalities_filepaths: Dict[str, List[str]] = None, filtered_patients: List[str] = None):
     """
     Filters out the filepaths based on the patients names. If the filepath contains any of
