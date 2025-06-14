@@ -104,6 +104,9 @@ class UNet(nn.Module):
         """
         Method used by perform_train(). Does one iteration of training.
         """
+        # setting the Module behaviour to train (nondeterministic for some modules)
+        self.train()
+
         utilized_metrics = {metric_name: self.available_metrics[metric_name] for metric_name in config.METRICS}
 
         epoch_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
@@ -267,6 +270,9 @@ class UNet(nn.Module):
                  plot_last_batch_each_epoch=False,
                  epoch_number=None
                  ):
+        # setting the Module behaviour to eval (deterministic for some modules such as Batch Normalization)
+        self.eval()
+
         logging.info(f"\t\tON DEVICE: {device} \t\tWITH LOSS: {self.criterion}\n")
         if not isinstance(self.criterion, Callable):
             raise TypeError(f"Loss function (criterion) has to be callable. It is {type(self.criterion)} which is not.")
