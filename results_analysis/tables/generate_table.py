@@ -114,7 +114,7 @@ def main():
         if df_specified_metric_eval.duplicated().any():
             raise ValueError(f"Provided data has identical values duplicated are = {df_specified_metric_eval.duplicated()}. "
                              f"This is very improbable. Check the downloaded data.")
-        df_specified_metric_eval.to_csv(f"tables\\new_raw_model\{keyword}_{metric_name}.csv")
+        df_specified_metric_eval.to_csv(f"results_analysis\\tables\\csv\\new_raw_model\{keyword}_{metric_name}.csv")
 
 
 if __name__ == "__main__":
