@@ -122,7 +122,7 @@ def create_visualization(results, dataloader, binarize_pred=True, target_on_pred
     total_cols = num_samples
 
     fig, axes = plt.subplots(total_rows, total_cols,
-                             figsize=(3.7 * total_cols, 3 * total_rows))
+                             figsize=(4 * total_cols, 3 * total_rows))
 
     if total_rows == 1:
         axes = axes.reshape(1, -1)
@@ -163,7 +163,8 @@ def create_visualization(results, dataloader, binarize_pred=True, target_on_pred
                 ax.set_ylabel(f'{config.OFFICIAL_MODALITIES_NAMES[modality]}',
                               fontsize=fontsize_scaler * 10, fontweight='bold')
             axis_off_keep_ylabel(ax)
-            plt.colorbar(im, ax=ax, fraction=0.04, pad=0.01)
+            cbar = plt.colorbar(im, ax=ax, fraction=0.035, pad=0.01)
+            cbar.ax.tick_params(labelsize=fontsize_scaler*8)
             row_idx += 1
 
         # Target
