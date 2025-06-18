@@ -44,7 +44,8 @@ def perform_evaluate(test_dir, model_path, representative_test_dir):
                          save_preds_dir=save_preds_dir,
                          plots_path=os.path.join(model_dir, "eval_visualization_from_nonorm", representative_test_dir), 
                          plot_metrics_distribution=True,
-                         plot_last_batch_each_epoch=True 
+                         plot_last_batch_each_epoch=True,
+                         plot_every_batch_with_metrics=True 
                          )
 
 
