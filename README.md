@@ -1,6 +1,9 @@
 # Can Federated Learning Overcome This Heterogeneity?
 
 ## Experiment pipeline
+The big picture of the pipeline used, explaining the structure of the results table in Figure 3. Visualization of the main steps and their dependencies, including:
+a) the UCSF-PDGM-v3 dataset split, b) subsets normalization, c) models training, d)
+test sets normalization, and e) resulting evaluation table.
 <img src="./results_analysis/final_plots/schemas/pipeline.png">
 
 
