@@ -8,6 +8,8 @@ import pickle
 import os
 import numpy as np
 
+from configs import config
+
 
 def metrics_to_str(metrics: Dict[str, List[float]], starting_symbol: str = "", sep="\t"):
     metrics_epoch_str = starting_symbol
@@ -48,7 +50,8 @@ class LossGeneralizedTwoClassDice(torch.nn.Module):
 class LossGeneralizedMultiClassDice(torch.nn.Module):
     def __init__(self, num_classes, device: str, binary_crossentropy: bool = False):
         super(LossGeneralizedMultiClassDice, self).__init__()
-        self.dice = GeneralizedDiceScore(num_classes=num_classes, include_background=True).to(device)
+        self.dice = GeneralizedDiceScore(num_classes=num_classes,
+                                         include_background=config.INCLUDE_BACKGROUND).to(device)
         self.binary_crossentropy = binary_crossentropy
 
         if binary_crossentropy:
