@@ -20,6 +20,7 @@ batch_print_freq = config.BATCH_PRINT_FREQ
 
 mse = nn.MSELoss()
 
+torch_gen_dice = metrics.GeneralizedDiceScore(num_classes=config.NUM_CLASSES, include_background=True)
 generalized_dice = metrics.GeneralizedTwoClassDice().to(device)
 # smoothed_dice = metrics.BinaryDice().to(device)
 binarized_smoothed_dice = metrics.BinaryDice(binarize_threshold=0.5).to(device)
@@ -35,7 +36,7 @@ class UNet(nn.Module):
             - GroupNorm (the number of groups specified in the config)
     """
 
-    def __init__(self, criterion=None, descriptive_metric: str = None, bilinear=False, normalization=config.NORMALIZATION, fl_training: bool = False):
+    def __init__(self, criterion=None, descriptive_metric: str = None, n_outputs=1, bilinear=False, normalization=config.NORMALIZATION, fl_training: bool = False):
         super(UNet, self).__init__()
 
         self.criterion = criterion
@@ -52,6 +53,7 @@ class UNet(nn.Module):
                                   # "smoothed_dice": smoothed_dice,
                                   "binarized_smoothed_dice": binarized_smoothed_dice,
                                   "binarized_jaccard_index": binarized_jaccard_index,
+                                  "torch_multi_class_gen_dice": torch_gen_dice
                                   # "jaccard": jaccard_index
                                   }
 
@@ -65,7 +67,7 @@ class UNet(nn.Module):
         self.up2 = (Up(512, 256 // factor, normalization, bilinear))
         self.up3 = (Up(256, 128 // factor, normalization, bilinear))
         self.up4 = (Up(128, 64, normalization, bilinear))
-        self.outc = (OutConv(64, 1))
+        self.outc = (OutConv(64, n_outputs))
 
     def forward(self, x):
         x1 = self.inc(x)
@@ -482,6 +484,10 @@ class OutConv(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(OutConv, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        if out_channels > 1:  # if multiclass
+            self.output_func = torch.nn.functional.softmax  # softmax output function
+        else:
+            self.output_func = torch.sigmoid  # else (binary) sigmoid
 
     def forward(self, x):
-        return torch.sigmoid(self.conv(x))
+        return self.output_func(self.conv(x))

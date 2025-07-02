@@ -23,9 +23,10 @@ class SegmentationDataset2DSlices(Dataset):
     """
     EPS = 1e-6
 
-    def __init__(self, data_paths: Union[str, List], modalities_names: List, mask_dir: str,  binarize_mask=False):
+    def __init__(self, data_paths: Union[str, List], modalities_names: List, mask_dir: str,  binarize_mask=False, num_classes=1):
         # declaring booleans
         self.binarize_mask = binarize_mask
+        self.num_classes = num_classes
         self.mask_dir = mask_dir
         self.modalities_names = modalities_names
 
@@ -69,13 +70,17 @@ class SegmentationDataset2DSlices(Dataset):
         np_target = np.load(self.target_filepaths[index])
 
         tensor_image = torch.from_numpy(np_image)
-        tensor_target = torch.from_numpy(np.expand_dims(np_target, axis=0))
+        tensor_target = torch.from_numpy(np_target)
 
         # tensor_image = torch.from_numpy(np.expand_dims(np_image, axis=0))
 
         if self.binarize_mask:
+            tensor_target = np.expand_dims(tensor_target, axis=0)
             tensor_target = tensor_target > 0
-
+        else:
+            tensor_target = torch.nn.functional.one_hot(tensor_target.to(torch.int64), self.num_classes)
+            desired_shape = (tensor_target.shape[-1], tensor_target.shape[0], tensor_target.shape[1])
+            tensor_target = tensor_target.reshape(desired_shape)  # TODO: improve the transpose
         # converting to float to be able to perform tensor multiplication
         # otherwise an error
         return tensor_image.float(), tensor_target.int()

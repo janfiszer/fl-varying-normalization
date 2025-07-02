@@ -1,7 +1,7 @@
 from typing import Dict, List, Any, Optional, Sequence, Tuple, Union, Literal
 
 from torchmetrics.metric import Metric
-
+from torchmetrics.segmentation import GeneralizedDiceScore
 import torch
 import logging
 import pickle
@@ -43,6 +43,73 @@ class LossGeneralizedTwoClassDice(torch.nn.Module):
             return f"LossGeneralizedTwoClassDice with BCE"
         else:
             return "LossGeneralizedTwoClassDice"
+
+
+class LossGeneralizedMultiClassDice(torch.nn.Module):
+    def __init__(self, num_classes, device: str, binary_crossentropy: bool = False):
+        super(LossGeneralizedMultiClassDice, self).__init__()
+        self.dice = GeneralizedDiceScore(num_classes=num_classes, include_background=True).to(device)
+        self.binary_crossentropy = binary_crossentropy
+
+        if binary_crossentropy:
+            self.bce_loss = torch.nn.BCELoss()
+
+    def forward(self, predict, target):
+        dice_scores = self.dice(predict, target)
+        loss = 1 - dice_scores.mean()
+
+        if self.binary_crossentropy:
+            bce_loss = self.bce_loss(predict, target.float())
+            total_loss = loss + bce_loss
+        else:
+            total_loss = loss
+
+        return total_loss
+
+    def __repr__(self):
+        if self.binary_crossentropy:
+            return f"LossGeneralizedMultiClassDice with BCE"
+        else:
+            return "LossGeneralizedMultiClassDice"
+
+
+class GeneralizedMultiClassDice(Metric):
+    full_state_update: bool = False
+
+    def __init__(self, **kwargs):
+        raise NotImplementedError
+        super().__init__(**kwargs)
+
+        self.add_state("dice_numerator", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("dice_denominator", default=torch.tensor(0.0), dist_reduce_fx="sum")
+
+    def update(self, preds: torch.Tensor, targets: torch.Tensor):
+        assert preds.shape == targets.shape
+
+        numerator, denominator = self.compute_dice_components(preds, targets)
+        self.dice_numerator += numerator
+        self.dice_denominator += denominator
+
+    def compute(self) -> torch.Tensor:
+        """Compute the final generalized dice score."""
+        return 2 * self.dice_numerator / self.dice_denominator
+
+    @staticmethod
+    def compute_dice_components(preds, targets):
+        num_samples_0 = (targets == 0).sum().item()
+        num_samples_1 = (targets == 1).sum().item()
+
+        weight_0 = 0 if num_samples_0 == 0 else 1 / (num_samples_0 ** 2)
+        weight_1 = 0 if num_samples_1 == 0 else 1 / (num_samples_1 ** 2)
+
+        numerator = weight_1 * (preds * targets).sum() + weight_0 * ((1 - preds) * (1 - targets)).sum()
+        denominator = weight_1 * (preds + targets).sum() + weight_0 * ((1 - preds) + (1 - targets)).sum()
+
+        return numerator, denominator
+
+    def __repr__(self):
+        return f"GeneralizedTwoClassDice"
+
 
 
 class GeneralizedTwoClassDice(Metric):
