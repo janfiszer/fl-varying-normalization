@@ -80,15 +80,13 @@ if __name__ == '__main__':
     else:
         representative_dir = get_youngest_dir(train_directories)
 
-    num_classes = 3
-
-    # create the model_dir name name having some config info and mkdir it 
+    # create the model_dir name having some config info and mkdir it
     model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_dir}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
     Path(model_dir).mkdir(parents=True, exist_ok=True)
 
     # initialize the UNet model and the criterion
-    criterion = metrics.LossGeneralizedMultiClassDice(num_classes=num_classes, device=device)
-    unet = UNet(criterion, n_outputs=num_classes+1).to(device)
+    criterion = metrics.LossGeneralizedMultiClassDice(num_classes=config.NUM_CLASSES, device=device)
+    unet = UNet(criterion, n_outputs=config.NUM_CLASSES+int(config.INCLUDE_BACKGROUND)).to(device)
 
     # get the pretrained weights (if provided)
     if pretrained_model_path:

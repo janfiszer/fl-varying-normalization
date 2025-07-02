@@ -485,7 +485,7 @@ class OutConv(nn.Module):
         super(OutConv, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         if out_channels > 1:  # if multiclass
-            self.output_func = torch.nn.Softmax(dim=config.NUM_CLASSES)  # softmax output function
+            self.output_func = torch.nn.Softmax(dim=1)  # softmax output function not sure if good but the dimetions goes like this (batch_size, num_classes, image_W, image_H)
         else:
             self.output_func = torch.sigmoid  # else (binary) sigmoid
 
