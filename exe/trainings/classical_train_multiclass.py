@@ -38,7 +38,7 @@ if __name__ == '__main__':
     dataset_kwargs = {
         "modalities_names": config.USED_MODALITIES,
         "mask_dir": config.MASK_DIR,
-        "binarize_mask": False,
+        "binarize_mask": not config.INCLUDE_BACKGROUND,  # if we include background, we do not binarize the mask
         "num_classes": config.NUM_CLASSES + int(config.INCLUDE_BACKGROUND)
     }
 
