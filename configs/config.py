@@ -40,7 +40,7 @@ PLOT_EACH_EPOCH = True
 METRICS = ["loss", "gen_dice", "binarized_smoothed_dice", "binarized_jaccard_index"]
 USED_MODALITIES = ["t1", "t2", "flair"]
 MASK_DIR = "mask"
-NUM_CLASSES = 3
+NUM_CLASSES = 4
 INCLUDE_BACKGROUND = True  # whether to include background as a separate class
 
 # Federated learning
