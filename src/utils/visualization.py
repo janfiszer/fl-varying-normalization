@@ -45,6 +45,13 @@ def plot_all_modalities_and_target(
         target = targets_list[row]
         prediction = predictions_list[row] if include_predictions else None
 
+        # for mutliclass scenerio:
+        if len(target.shape) > 2:
+            target = torch.argmax(target, dim=0)
+
+        if len(prediction.shape) > 2:
+            prediction = torch.argmax(prediction, dim=0)
+
         for col in range(total_columns):
             ax = axes[row, col]
 

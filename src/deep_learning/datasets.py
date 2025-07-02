@@ -79,8 +79,7 @@ class SegmentationDataset2DSlices(Dataset):
             tensor_target = tensor_target > 0
         else:
             tensor_target = torch.nn.functional.one_hot(tensor_target.to(torch.int64), self.num_classes)
-            desired_shape = (tensor_target.shape[-1], tensor_target.shape[0], tensor_target.shape[1])
-            tensor_target = tensor_target.reshape(desired_shape)  # TODO: improve the transpose
+            tensor_target = tensor_target.permute(2, 0, 1)  # permute to have the shape (n_classes, image_shape)
         # converting to float to be able to perform tensor multiplication
         # otherwise an error
         return tensor_image.float(), tensor_target.int()
