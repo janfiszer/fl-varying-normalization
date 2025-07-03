@@ -20,7 +20,7 @@ batch_print_freq = config.BATCH_PRINT_FREQ
 
 mse = nn.MSELoss()
 
-torch_gen_dice = metrics.GeneralizedDiceScore(num_classes=config.NUM_CLASSES, include_background=True)
+torch_gen_dice = metrics.GeneralizedDiceScore(num_classes=config.NUM_CLASSES, include_background=True).to(device)
 generalized_dice = metrics.GeneralizedTwoClassDice().to(device)
 # smoothed_dice = metrics.BinaryDice().to(device)
 binarized_smoothed_dice = metrics.BinaryDice(binarize_threshold=0.5).to(device)

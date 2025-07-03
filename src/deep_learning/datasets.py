@@ -78,8 +78,8 @@ class SegmentationDataset2DSlices(Dataset):
             tensor_target = np.expand_dims(tensor_target, axis=0)
             tensor_target = tensor_target > 0
         else:
-            logging.info(f"tensor_target values are {torch.unique(tensor_target)}")
-            tensor_target = torch.nn.functional.one_hot(tensor_target.to(torch.int64), self.num_classes)
+            logging.debug(f"tensor_target values are {torch.unique(tensor_target)}")
+            tensor_target = torch.nn.functional.one_hot(tensor_target.to(torch.int64), self.num_classes)   # TODO: clip
             tensor_target = tensor_target.permute(2, 0, 1)  # permute to have the shape (n_classes, image_shape)
         # converting to float to be able to perform tensor multiplication
         # otherwise an error
