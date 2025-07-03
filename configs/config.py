@@ -37,7 +37,7 @@ CLIENT_SAVING_FREQ = 10  # how often (round-wise) the model is saved for client
 PLOT_BATCH_WITH_METRICS = False
 PLOT_EACH_EPOCH = True
 
-METRICS = ["loss", "gen_dice", "binarized_smoothed_dice", "binarized_jaccard_index"]
+METRICS = ["loss", "torch_multi_class_gen_dice"]
 USED_MODALITIES = ["t1", "t2", "flair"]
 MASK_DIR = "mask"
 NUM_CLASSES = 4
@@ -72,7 +72,7 @@ MOMENTUM = 0.9
 FEDDELAY_ROUND = 30
 
 # centralized train
-N_EPOCHS_CENTRALIZED = 16
+N_EPOCHS_CENTRALIZED = 50
 
 # file names and paths
 PROJECT_NAME = "fl-varying-normalization"
