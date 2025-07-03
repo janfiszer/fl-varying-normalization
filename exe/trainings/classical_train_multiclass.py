@@ -85,7 +85,7 @@ if __name__ == '__main__':
     Path(model_dir).mkdir(parents=True, exist_ok=True)
 
     # initialize the UNet model and the criterion
-    criterion = metrics.LossGeneralizedMultiClassDice(num_classes=config.NUM_CLASSES, device=device)
+    criterion = metrics.LossGeneralizedMultiClassDice(num_classes=config.NUM_CLASSES, crossentropy=True, device=device)
     unet = UNet(criterion, n_outputs=config.NUM_CLASSES+int(config.INCLUDE_BACKGROUND)).to(device)
 
     # get the pretrained weights (if provided)

@@ -48,20 +48,20 @@ class LossGeneralizedTwoClassDice(torch.nn.Module):
 
 
 class LossGeneralizedMultiClassDice(torch.nn.Module):
-    def __init__(self, num_classes, device: str, binary_crossentropy: bool = False):
+    def __init__(self, num_classes, device: str, crossentropy: bool = False):
         super(LossGeneralizedMultiClassDice, self).__init__()
         self.dice = GeneralizedDiceScore(num_classes=num_classes,
                                          include_background=config.INCLUDE_BACKGROUND).to(device)
-        self.binary_crossentropy = binary_crossentropy
+        self.crossentropy = crossentropy
 
-        if binary_crossentropy:
-            self.bce_loss = torch.nn.BCELoss()
+        if crossentropy:
+            self.bce_loss = torch.nn.CrossEntropyLoss()
 
     def forward(self, predict, target):
         dice_scores = self.dice(predict, target)
         loss = 1 - dice_scores.mean()
 
-        if self.binary_crossentropy:
+        if self.crossentropy:
             bce_loss = self.bce_loss(predict, target.float())
             total_loss = loss + bce_loss
         else:
@@ -70,8 +70,8 @@ class LossGeneralizedMultiClassDice(torch.nn.Module):
         return total_loss
 
     def __repr__(self):
-        if self.binary_crossentropy:
-            return f"LossGeneralizedMultiClassDice with BCE"
+        if self.crossentropy:
+            return f"LossGeneralizedMultiClassDice with CE"
         else:
             return "LossGeneralizedMultiClassDice"
 
