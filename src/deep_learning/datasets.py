@@ -76,14 +76,16 @@ class SegmentationDataset2DSlices(Dataset):
 
         if self.binarize_mask:
             tensor_target = np.expand_dims(tensor_target, axis=0)
-            tensor_target = tensor_target > 0
+            tensor_target = (tensor_target > 0).int()
         else:
             logging.debug(f"tensor_target values are {torch.unique(tensor_target)}")
-            tensor_target = torch.nn.functional.one_hot(tensor_target.to(torch.int64), self.num_classes)   # TODO: clip
+            # clipping the values to be in range [0, num_classes-1], since the target mask has classes 0, 1, 2, 4 (3 is skipped) TODO: investigate why it is so
+            tensor_target = torch.clamp(tensor_target, 0, self.num_classes-1)
+            tensor_target = torch.nn.functional.one_hot(tensor_target.to(torch.int64), self.num_classes)
             tensor_target = tensor_target.permute(2, 0, 1)  # permute to have the shape (n_classes, image_shape)
         # converting to float to be able to perform tensor multiplication
         # otherwise an error
-        return tensor_image.float(), tensor_target.int()
+        return tensor_image.float(), tensor_target
 
 
 class VolumeEvaluation(Dataset):
