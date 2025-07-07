@@ -39,7 +39,7 @@ if __name__ == '__main__':
         "modalities_names": config.USED_MODALITIES,
         "mask_dir": config.MASK_DIR,
         "binarize_mask": False,
-        "num_classes": config.NUM_CLASSES + int(config.INCLUDE_BACKGROUND)
+        "num_classes": config.NUM_CLASSES
     }
 
     train_dataset = SegmentationDataset2DSlices(train_directories, **dataset_kwargs)
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     # initialize the UNet model and the criterion
     criterion = metrics.LossGeneralizedMultiClassDice(num_classes=config.NUM_CLASSES, crossentropy=True, device=device)
-    unet = UNet(criterion, n_outputs=config.NUM_CLASSES+int(config.INCLUDE_BACKGROUND)).to(device)
+    unet = UNet(criterion, n_outputs=config.NUM_CLASSES).to(device)
 
     # get the pretrained weights (if provided)
     if pretrained_model_path:

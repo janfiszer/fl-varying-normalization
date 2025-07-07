@@ -20,10 +20,10 @@ batch_print_freq = config.BATCH_PRINT_FREQ
 
 mse = nn.MSELoss()
 
-torch_gen_dice = metrics.GeneralizedDiceScore(num_classes=config.NUM_CLASSES, 
+torch_gen_dice = metrics.GeneralizedDiceScore(num_classes=config.NUM_CLASSES,
                                               include_background=config.INCLUDE_BACKGROUND, 
                                               weight_type=config.DICE_WEIGHT_TYPE).to(device)
-torch_per_class_gen_dice = metrics.GeneralizedDiceScore(num_classes=config.NUM_CLASSES, 
+torch_per_class_gen_dice = metrics.GeneralizedDiceScore(num_classes=config.NUM_CLASSES,
                                                         include_background=config.INCLUDE_BACKGROUND, 
                                                         per_class=True, 
                                                         weight_type=config.DICE_WEIGHT_TYPE).to(device)
@@ -118,9 +118,13 @@ class UNet(nn.Module):
         self.train()
 
         utilized_metrics = {metric_name: self.available_metrics[metric_name] for metric_name in config.METRICS}
+        per_class_utilized_metrics = {metric_name: self.available_metrics[metric_name] for metric_name in config.PER_CLASS_METRICS}
 
         epoch_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
         total_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
+
+        per_class_total_metrics = {metric_name: torch.zeros(config.NUM_CLASSES)
+                                   for metric_name in per_class_utilized_metrics}
 
         n_batches = len(trainloader)
 
@@ -152,14 +156,24 @@ class UNet(nn.Module):
                 else:
                     metric_value = metric_object(predictions, targets)
 
-                total_metrics[metric_name] += metric_value.item()
-                epoch_metrics[metric_name] += metric_value.item()
+                if "per_class" in metric_name:
+                    per_class_total_metrics[metric_name] += metric_value
+                else:
+                    total_metrics[metric_name] += metric_value.item()
+                    epoch_metrics[metric_name] += metric_value.item()
 
             if index % batch_print_frequency == batch_print_frequency - 1:
                 divided_batch_metrics = {metric_name: total_value / batch_print_frequency for metric_name, total_value
                                          in total_metrics.items()}
                 metrics_str = metrics.metrics_to_str(divided_batch_metrics, starting_symbol="\t")
-                logging.info(f'\t\tbatch {(index + 1)} out of {n_batches}\t\t{metrics_str}')
+                per_class_metrics_string = ""
+                for metric_name, metric_tensor_values in per_class_total_metrics.items():
+                    metrics_values_str = metrics.metrics_to_str(
+                        {class_n: value for class_n, value in enumerate(metric_tensor_values)},
+                        starting_symbol="\t", sep=" ")
+                    per_class_metrics_string += f"{metric_name}: {metrics_values_str}"
+
+                logging.info(f'\t\tbatch {(index + 1)} out of {n_batches}\t\t{metrics_str}\t{per_class_metrics_string}')
                 total_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
 
             n_train_steps += 1
