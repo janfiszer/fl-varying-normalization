@@ -20,7 +20,14 @@ batch_print_freq = config.BATCH_PRINT_FREQ
 
 mse = nn.MSELoss()
 
-torch_gen_dice = metrics.GeneralizedDiceScore(num_classes=config.NUM_CLASSES, include_background=True).to(device)
+torch_gen_dice = metrics.GeneralizedDiceScore(num_classes=config.NUM_CLASSES, 
+                                              include_background=config.INCLUDE_BACKGROUND, 
+                                              weight_type=config.DICE_WEIGHT_TYPE).to(device)
+torch_per_class_gen_dice = metrics.GeneralizedDiceScore(num_classes=config.NUM_CLASSES, 
+                                                        include_background=config.INCLUDE_BACKGROUND, 
+                                                        per_class=True, 
+                                                        weight_type=config.DICE_WEIGHT_TYPE).to(device)
+
 generalized_dice = metrics.GeneralizedTwoClassDice().to(device)
 # smoothed_dice = metrics.BinaryDice().to(device)
 binarized_smoothed_dice = metrics.BinaryDice(binarize_threshold=0.5).to(device)
@@ -53,7 +60,8 @@ class UNet(nn.Module):
                                   # "smoothed_dice": smoothed_dice,
                                   "binarized_smoothed_dice": binarized_smoothed_dice,
                                   "binarized_jaccard_index": binarized_jaccard_index,
-                                  "torch_multi_class_gen_dice": torch_gen_dice
+                                  "torch_multi_class_gen_dice": torch_gen_dice,
+                                  "torch_multi_per_class_gen_dice": torch_per_class_gen_dice
                                   # "jaccard": jaccard_index
                                   }
 
@@ -138,6 +146,7 @@ class UNet(nn.Module):
             optimizer.step()
 
             for metric_name, metric_object in utilized_metrics.items():
+                logging.debug(f"\t\t\tCalculating metric {metric_name} for batch {index + 1}/{n_batches}")
                 if metric_name == "loss":
                     metric_value = loss
                 else:
@@ -221,7 +230,7 @@ class UNet(nn.Module):
 
             logging.info("\tVALIDATION...")
             if validationloader is not None:
-                val_metric = self.evaluate(validationloader, plots_path, plot_every_batch_with_metrics=config.PLOT_BATCH_WITH_METRICS, plot_last_batch_each_epoch=config.PLOT_EACH_EPOCH, epoch_number=epoch)
+                val_metric = self.evaluate(validationloader, plots_path, plot_every_batch_with_metrics=config.PLOT_BATCH_WITH_METRICS, plot_last_batch_each_epoch=config.PLOT_EACH_EPOCH, plot_preds_distribution=True, epoch_number=epoch)
 
                 for metric in val_metric_names:
                     # trimming after val_ to get only the metric name since it is provided by the
@@ -270,7 +279,8 @@ class UNet(nn.Module):
                  plot_metrics_distribution=False,
                  plot_every_batch_with_metrics=False,
                  plot_last_batch_each_epoch=False,
-                 epoch_number=None
+                 plot_preds_distribution=False,
+                 epoch_number=None,
                  ):
         # setting the Module behaviour to eval (deterministic for some modules such as Batch Normalization)
         self.eval()
@@ -348,9 +358,10 @@ class UNet(nn.Module):
                 
                 # plotting 
                 if plots_path:
+                    descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
                     if plot_every_batch_with_metrics:
                         # calculating the last metric values that might be needed as plot info
-                        descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
+
                         current_batch_metrics = {metric_name: metrics_values[metric_name][-1] for metric_name in
                                                  metrics_values.keys()}
                         batches_with_metrics_dirpath = path.join(plots_path, f"batches_with_metrics_{epoch_number}")
@@ -363,6 +374,17 @@ class UNet(nn.Module):
                             title=metrics.metrics_to_str(current_batch_metrics, sep=";"),
                             savepath=filepath
                             )
+                    if plot_preds_distribution:
+                        # plotting the distribution of predictions
+                        descriptive_metric_value = metrics_values[f"val_{self.descriptive_metric}"][-1]
+                        preds_distribution_dir_path = path.join(plots_path, f"preds_distribution_{epoch_number}")
+
+                        # creating the directory for saving predictions distribution histograms, in format: channel_number: channel_images (all images from that batch)
+                        preds_dict_for_each_channel = {out_put_channel: predictions[:, out_put_channel, :, :].cpu().numpy()
+                                                       for out_put_channel in range(predictions.shape[1])}
+                        visualization.plot_distribution(preds_dict_for_each_channel, preds_distribution_dir_path, file_prefix="histogram_channel")
+
+                        logging.debug("\t\t\tPredictions distribution histogram saved.")
 
         if plots_path:
             # saving last batch

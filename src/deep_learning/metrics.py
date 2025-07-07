@@ -51,7 +51,8 @@ class LossGeneralizedMultiClassDice(torch.nn.Module):
     def __init__(self, num_classes, device: str, crossentropy: bool = False):
         super(LossGeneralizedMultiClassDice, self).__init__()
         self.dice = GeneralizedDiceScore(num_classes=num_classes,
-                                         include_background=config.INCLUDE_BACKGROUND).to(device)
+                                         include_background=config.INCLUDE_BACKGROUND, 
+                                         weight_type=config.DICE_WEIGHT_TYPE).to(device)
         self.crossentropy = crossentropy
 
         if crossentropy:
