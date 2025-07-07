@@ -34,6 +34,12 @@ def plot_all_modalities_and_target(
 
     fig, axes = plt.subplots(num_samples, total_columns, figsize=(4 * total_columns, 4 * num_samples + 2))
 
+    # check if the targets are multidimentional tensors, then we have a multiclass scenario
+    if len(targets_list[0].shape) > 2:
+        multiclass = True
+    else:
+        multiclass = False
+
     # Ensure axes is always 2D
     if num_samples == 1:
         axes = axes[np.newaxis, :]
@@ -45,11 +51,9 @@ def plot_all_modalities_and_target(
         target = targets_list[row]
         prediction = predictions_list[row] if include_predictions else None
 
-        # for mutliclass scenerio:
-        if len(target.shape) > 2:
+        # for mutliclass scenario:
+        if multiclass:
             target = torch.argmax(target, dim=0)
-
-        if len(prediction.shape) > 2:
             prediction = torch.argmax(prediction, dim=0)
 
         for col in range(total_columns):
@@ -63,11 +67,11 @@ def plot_all_modalities_and_target(
             elif col == num_modalities:
                 cmap = "plasma"
                 img = target
-                vmax = 1
+                vmax = config.NUM_CLASSES - 1 if multiclass else 1
             else:
                 cmap = "plasma"
                 img = prediction
-                vmax = 1
+                vmax = config.NUM_CLASSES - 1 if multiclass else 1
 
             if not isinstance(img, torch.Tensor):
                 raise TypeError("All images, targets, and predictions must be torch.Tensor instances.")
@@ -317,18 +321,21 @@ def visualize_normalization_methods(data_dir, savefig_filename=None):
     plt.close()
 
 
-def plot_distribution(metrics_values, histograms_dir_path):
+def plot_distribution(metrics_values, histograms_dir_path, file_prefix=None):
+    if file_prefix is None:
+        file_prefix = "histogram"
+
     Path(histograms_dir_path).mkdir(exist_ok=True)
     # Plot and save histograms
     for key, values in metrics_values.items():
         plt.figure()  # Create a new figure
-        plt.hist(values, bins=100, color='blue', alpha=0.7)
+        plt.hist(values.flatten(), bins=100, color='blue', alpha=0.7)
         plt.title(f"Histogram of {key}")
         plt.xlabel("Value")
         plt.ylabel("Frequency")
 
         # Save to file
-        output_path = os.path.join(histograms_dir_path, f"{key}_histogram.png")
+        output_path = os.path.join(histograms_dir_path, f"{file_prefix}_{key}.png")
         plt.savefig(output_path)
         plt.close()  # Close the figure to free up memory
         logging.debug(f"\t\t\t\tSaved histogram for {key} to {output_path}")
