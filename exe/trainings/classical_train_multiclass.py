@@ -38,7 +38,7 @@ if __name__ == '__main__':
     dataset_kwargs = {
         "modalities_names": config.USED_MODALITIES,
         "mask_dir": config.MASK_DIR,
-        "binarize_mask": not config.INCLUDE_BACKGROUND,  # if we include background, we do not binarize the mask
+        "binarize_mask": False,
         "num_classes": config.NUM_CLASSES + int(config.INCLUDE_BACKGROUND)
     }
 
@@ -81,7 +81,7 @@ if __name__ == '__main__':
         representative_dir = get_youngest_dir(train_directories)
 
     # create the model_dir name having some config info and mkdir it
-    model_dir = f"{config.DATA_ROOT_DIR}/trained_models/model-{representative_dir}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
+    model_dir = f"{config.TRAINED_MODELS_DIR}/model-{representative_dir}-ep{num_epochs}-lr{config.LEARNING_RATE}-{config.NORMALIZATION.name}-{config.now.date()}-{config.now.hour}h"
     Path(model_dir).mkdir(parents=True, exist_ok=True)
 
     # initialize the UNet model and the criterion
