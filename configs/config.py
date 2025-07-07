@@ -12,7 +12,7 @@ from configs.enums import *
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.INFO,
+    level=logging.DEBUG,
     datefmt='%Y-%m-%d %H:%M:%S')
 
 # Variable set to true for testing locally
@@ -22,8 +22,8 @@ LOCAL = False
 
 # DEEP LEARNING PARAMETERS
 BATCH_SIZE = 32
-LEARNING_RATE = 0.001
-DROPOUT_RATE = 0.3
+LEARNING_RATE = 0.01
+DROPOUT_RATE = 0.0
 NUM_WORKERS = 8
 # model parameters 
 NORMALIZATION = LayerNormalizationType.GN  # tested and group normalization works the best
@@ -37,11 +37,15 @@ CLIENT_SAVING_FREQ = 10  # how often (round-wise) the model is saved for client
 PLOT_BATCH_WITH_METRICS = False
 PLOT_EACH_EPOCH = True
 
-METRICS = ["loss", "torch_multi_class_gen_dice"]
 USED_MODALITIES = ["t1", "t2", "flair"]
 MASK_DIR = "mask"
-NUM_CLASSES = 4
+
+# METRIC PARAMETERS
+METRICS = ["loss", "torch_multi_class_gen_dice", "torch_multi_per_class_gen_dice"]
+# Dice
+NUM_CLASSES = 3
 INCLUDE_BACKGROUND = True  # whether to include background as a separate class
+DICE_WEIGHT_TYPE = 'linear'  # 'linear' or 'square'
 
 # Federated learning
 # USED ONLY: when the server and clients are started separately
@@ -72,7 +76,7 @@ MOMENTUM = 0.9
 FEDDELAY_ROUND = 30
 
 # centralized train
-N_EPOCHS_CENTRALIZED = 50
+N_EPOCHS_CENTRALIZED = 32
 
 # file names and paths
 PROJECT_NAME = "fl-varying-normalization"
@@ -99,7 +103,7 @@ if LOCAL:
 else:
     DATA_ROOT_DIR = "/net/pr2/projects/plgrid/plggflmri/Data/Internship/FL/varying-normalization"
 
-
+TRAINED_MODELS_DIR = path.join(DATA_ROOT_DIR, "trained_models/multi_class")
 
 now = datetime.datetime.now()
 # CENTRALIZED_DIR = f"{DATA_ROOT_DIR}/trained_models/model-mgh-centralized-{LOSS_TYPE.name}-ep{N_EPOCHS_CENTRALIZED}-{TRANSLATION[0].name}{TRANSLATION[1].name}-lr{LEARNING_RATE}-{now.date()}-{now.hour}h"
