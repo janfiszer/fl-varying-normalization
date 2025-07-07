@@ -12,7 +12,7 @@ from configs.enums import *
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.DEBUG,
+    level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S')
 
 # Variable set to true for testing locally
@@ -30,7 +30,7 @@ NORMALIZATION = LayerNormalizationType.GN  # tested and group normalization work
 N_GROUP_NORM = 32
 
 # saving and logging while training
-USE_WANDB = True
+USE_WANDB = False  # whether to use Weights and Biases for logging
 BATCH_PRINT_FREQ = 10  # number of batch after each the training parameters (metrics, loss) is printed
 SAVING_FREQUENCY = 10  # how often (round-wise) the model is saved
 CLIENT_SAVING_FREQ = 10  # how often (round-wise) the model is saved for client
@@ -41,11 +41,13 @@ USED_MODALITIES = ["t1", "t2", "flair"]
 MASK_DIR = "mask"
 
 # METRIC PARAMETERS
-METRICS = ["loss", "torch_multi_class_gen_dice", "torch_multi_per_class_gen_dice"]
+METRICS = ["loss", "torch_multi_class_gen_dice"]
+PER_CLASS_METRICS = ["torch_multi_per_class_gen_dice"]
 # Dice
-NUM_CLASSES = 3
 INCLUDE_BACKGROUND = True  # whether to include background as a separate class
-DICE_WEIGHT_TYPE = 'linear'  # 'linear' or 'square'
+NUM_CLASSES = 3 + int(INCLUDE_BACKGROUND)
+DICE_WEIGHT_TYPE = 'square'  # 'linear' or 'square'
+
 
 # Federated learning
 # USED ONLY: when the server and clients are started separately
