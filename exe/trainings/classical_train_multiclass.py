@@ -39,7 +39,8 @@ if __name__ == '__main__':
         "modalities_names": config.USED_MODALITIES,
         "mask_dir": config.MASK_DIR,
         "binarize_mask": False,
-        "num_classes": config.NUM_CLASSES
+        "num_classes": config.NUM_CLASSES,
+        "trimming_padding": config.TRIMMING
     }
 
     train_dataset = SegmentationDataset2DSlices(train_directories, **dataset_kwargs)

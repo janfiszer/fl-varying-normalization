@@ -24,16 +24,20 @@ class SegmentationDataset2DSlices(Dataset):
     """
     EPS = 1e-6
 
-    def __init__(self, data_paths: Union[str, List], modalities_names: List, mask_dir: str,  binarize_mask=False, num_classes=1):
+    def __init__(self, data_paths: Union[str, List], modalities_names: List, mask_dir: str,
+                 binarize_mask: bool = False, num_classes: int = 1, trimming_padding: int = 0):
         # declaring booleans
         self.binarize_mask = binarize_mask
+
+        self.trimming_padding = trimming_padding
         self.num_classes = num_classes
         self.mask_dir = mask_dir
         self.modalities_names = modalities_names
 
         self.modalities_filepaths, self.target_filepaths = self.load_full_paths(data_paths)
 
-        logging.info(f"Dataset 'SegmentationDataset2DSlices' loaded {len(self.target_filepaths)} filepaths from {data_paths}.")
+        logging.info(
+            f"Dataset 'SegmentationDataset2DSlices' loaded {len(self.target_filepaths)} filepaths from {data_paths}.")
 
     def __len__(self):
         return len(self.target_filepaths)
@@ -51,15 +55,22 @@ class SegmentationDataset2DSlices(Dataset):
                 for slice_dir in os.listdir(patient_fullpath):
                     slice_dir_fullpath = os.path.join(patient_fullpath, slice_dir)
                     for modality in self.modalities_names:
-                        slice_file_fullpath = os.path.join(slice_dir_fullpath, f"{modality}{TransformVolumesToNumpySlices.SLICES_FILE_FORMAT}")
+                        slice_file_fullpath = os.path.join(slice_dir_fullpath,
+                                                           f"{modality}{TransformVolumesToNumpySlices.SLICES_FILE_FORMAT}")
                         modalities_filepaths[modality].append(slice_file_fullpath)
-                    target_filepaths.append(os.path.join(slice_dir_fullpath, f"{self.mask_dir}{TransformVolumesToNumpySlices.SLICES_FILE_FORMAT}"))
+                    target_filepaths.append(os.path.join(slice_dir_fullpath,
+                                                         f"{self.mask_dir}{TransformVolumesToNumpySlices.SLICES_FILE_FORMAT}"))
 
         # checking if all the lists are the same size
         for modality in self.modalities_names:
             assert (len(target_filepaths) == len(modalities_filepaths[modality]))
 
         return modalities_filepaths, target_filepaths
+
+    def _trim_image(self, image):
+        image_w, image_h = image.shape
+        return image[self.trimming_padding: image_w - self.trimming_padding,
+               self.trimming_padding: image_h - self.trimming_padding]
 
     def __getitem__(self, index):
         # loading images
@@ -81,7 +92,7 @@ class SegmentationDataset2DSlices(Dataset):
         else:
             logging.debug(f"tensor_target values are {torch.unique(tensor_target)}")
             # clipping the values to be in range [0, num_classes-1], since the target mask has classes 0, 1, 2, 4 (3 is skipped) TODO: investigate why it is so
-            tensor_target = torch.clamp(tensor_target, 0, self.num_classes-1)
+            tensor_target = torch.clamp(tensor_target, 0, self.num_classes - 1)
             tensor_target = torch.nn.functional.one_hot(tensor_target.to(torch.int64), self.num_classes)
             tensor_target = tensor_target.permute(2, 0, 1)  # permute to have the shape (n_classes, image_shape)
         # converting to float to be able to perform tensor multiplication
@@ -90,9 +101,12 @@ class SegmentationDataset2DSlices(Dataset):
 
 
 class VolumeEvaluation(Dataset):
-    def __init__(self, ground_truth_path: str, predicted_path: str, mask_target_filename: str = "mask.npy", squeeze_pred=True, binarize_target: bool = True):
-        self.ground_truth_dir_paths = [os.path.join(ground_truth_path, dir_name) for dir_name in sorted(os.listdir(ground_truth_path))]
-        self.predicted_dir_paths = [os.path.join(predicted_path, dir_name) for dir_name in sorted(os.listdir(predicted_path))]
+    def __init__(self, ground_truth_path: str, predicted_path: str, mask_target_filename: str = "mask.npy",
+                 squeeze_pred=True, binarize_target: bool = True):
+        self.ground_truth_dir_paths = [os.path.join(ground_truth_path, dir_name) for dir_name in
+                                       sorted(os.listdir(ground_truth_path))]
+        self.predicted_dir_paths = [os.path.join(predicted_path, dir_name) for dir_name in
+                                    sorted(os.listdir(predicted_path))]
 
         self.mask_target_filename = mask_target_filename
         self.squeeze_pred = squeeze_pred
@@ -110,7 +124,8 @@ class VolumeEvaluation(Dataset):
         # loading the patient slices (target and predicted)
         target_slices = [np.load(os.path.join(ground_truth_dir, filename, self.mask_target_filename))
                          for filename in sorted(os.listdir(ground_truth_dir))]
-        predicted_slices = [np.load(os.path.join(predicted_dir, filename)) for filename in sorted(os.listdir(predicted_dir))]
+        predicted_slices = [np.load(os.path.join(predicted_dir, filename)) for filename in
+                            sorted(os.listdir(predicted_dir))]
 
         # reducing a dimension of the predicted slices
         if self.squeeze_pred:
