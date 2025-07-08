@@ -10,6 +10,15 @@ import numpy as np
 
 from configs import config
 
+from torch import Tensor
+from typing_extensions import Literal
+
+from torchmetrics.functional.segmentation.generalized_dice import (
+    _generalized_dice_compute,
+    _generalized_dice_update,
+    _generalized_dice_validate_args,
+)
+
 
 def metrics_to_str(metrics: Dict[str, List[float]], starting_symbol: str = "", sep="\t"):
     metrics_epoch_str = starting_symbol
@@ -77,43 +86,9 @@ class LossGeneralizedMultiClassDice(torch.nn.Module):
             return "LossGeneralizedMultiClassDice"
 
 
-class GeneralizedMultiClassDice(Metric):
-    full_state_update: bool = False
-
-    def __init__(self, **kwargs):
-        raise NotImplementedError
-        super().__init__(**kwargs)
-
-        self.add_state("dice_numerator", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("dice_denominator", default=torch.tensor(0.0), dist_reduce_fx="sum")
-
-    def update(self, preds: torch.Tensor, targets: torch.Tensor):
-        assert preds.shape == targets.shape
-
-        numerator, denominator = self.compute_dice_components(preds, targets)
-        self.dice_numerator += numerator
-        self.dice_denominator += denominator
-
-    def compute(self) -> torch.Tensor:
+    def compute(self) -> Tensor:
         """Compute the final generalized dice score."""
-        return 2 * self.dice_numerator / self.dice_denominator
-
-    @staticmethod
-    def compute_dice_components(preds, targets):
-        num_samples_0 = (targets == 0).sum().item()
-        num_samples_1 = (targets == 1).sum().item()
-
-        weight_0 = 0 if num_samples_0 == 0 else 1 / (num_samples_0 ** 2)
-        weight_1 = 0 if num_samples_1 == 0 else 1 / (num_samples_1 ** 2)
-
-        numerator = weight_1 * (preds * targets).sum() + weight_0 * ((1 - preds) * (1 - targets)).sum()
-        denominator = weight_1 * (preds + targets).sum() + weight_0 * ((1 - preds) + (1 - targets)).sum()
-
-        return numerator, denominator
-
-    def __repr__(self):
-        return f"GeneralizedTwoClassDice"
-
+        return self.score / self.samples
 
 
 class GeneralizedTwoClassDice(Metric):
