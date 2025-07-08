@@ -81,7 +81,7 @@ class SegmentationDataset2DSlices(Dataset):
         else:
             logging.debug(f"tensor_target values are {torch.unique(tensor_target)}")
             # clipping the values to be in range [0, num_classes-1], since the target mask has classes 0, 1, 2, 4 (3 is skipped) TODO: investigate why it is so
-            tensor_target = torch.clamp(tensor_target, 0, self.num_classes+int(config.INCLUDE_BACKGROUND)-1)
+            tensor_target = torch.clamp(tensor_target, 0, self.num_classes-1)
             tensor_target = torch.nn.functional.one_hot(tensor_target.to(torch.int64), self.num_classes)
             tensor_target = tensor_target.permute(2, 0, 1)  # permute to have the shape (n_classes, image_shape)
         # converting to float to be able to perform tensor multiplication

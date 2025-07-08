@@ -127,7 +127,7 @@ class UNet(nn.Module):
         epoch_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
         total_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
 
-        per_class_total_metrics = {metric_name: torch.zeros(config.NUM_CLASSES-int(not config.INCLUDE_BACKGROUND))
+        per_class_total_metrics = {metric_name: torch.zeros(config.NUM_CLASSES-int(not config.INCLUDE_BACKGROUND)).to(device)
                                    for metric_name in per_class_utilized_metrics}
         # TODO: metric dict class, with to_str, reset ect...
 
@@ -183,7 +183,7 @@ class UNet(nn.Module):
                 logging.info(f'\t\tbatch {(index + 1)} out of {n_batches}\t\t{metrics_str}\t{per_class_metrics_string}')
                 total_metrics = {metric_name: 0.0 for metric_name in utilized_metrics.keys()}
                 per_class_total_metrics = {
-                    metric_name: torch.zeros(config.NUM_CLASSES-int(~config.INCLUDE_BACKGROUND))
+                    metric_name: torch.zeros(config.NUM_CLASSES-int(not config.INCLUDE_BACKGROUND)).to(device)
                     for metric_name in per_class_utilized_metrics}
 
             n_train_steps += 1

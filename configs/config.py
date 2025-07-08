@@ -12,7 +12,7 @@ from configs.enums import *
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.INFO,
+    level=logging.DEBUG,
     datefmt='%Y-%m-%d %H:%M:%S')
 
 # Variable set to true for testing locally
@@ -44,8 +44,8 @@ MASK_DIR = "mask"
 METRICS = ["loss", "torch_multi_class_gen_dice"]
 PER_CLASS_METRICS = ["torch_multi_per_class_gen_dice"]
 # Dice
-INCLUDE_BACKGROUND = True  # whether to include background as a separate class
-NUM_CLASSES = 3 + int(INCLUDE_BACKGROUND)
+INCLUDE_BACKGROUND = True  # whether to include background as a separate class during segmentation
+NUM_CLASSES = 4  # includes background as a class which is subtracts in case INCLUDE_BACKGROUND is False
 DICE_WEIGHT_TYPE = 'square'  # 'linear' or 'square'
 
 
