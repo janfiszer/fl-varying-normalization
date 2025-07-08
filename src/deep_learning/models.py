@@ -176,7 +176,7 @@ class UNet(nn.Module):
                 per_class_metrics_string = ""
                 for metric_name, metric_tensor_values in per_class_total_metrics.items():
                     metrics_values_str = metrics.metrics_to_str(
-                        {class_n: value / batch_print_frequency for class_n, value in enumerate(metric_tensor_values)},
+                        {class_n+int(not config.INCLUDE_BACKGROUND): value / batch_print_frequency for class_n, value in enumerate(metric_tensor_values)},
                         starting_symbol="\t", sep=" ")
                     per_class_metrics_string += f"{metric_name}: {metrics_values_str}"
 
@@ -414,8 +414,11 @@ class UNet(nn.Module):
                         preds_dict_for_each_channel = {
                             out_put_channel: predictions[:, out_put_channel, :, :].cpu().numpy()
                             for out_put_channel in range(predictions.shape[1])}
-                        visualization.plot_distribution(preds_dict_for_each_channel, preds_distribution_dir_path,
-                                                        file_prefix="histogram_channel")
+                        try:
+                            visualization.plot_distribution(preds_dict_for_each_channel, preds_distribution_dir_path,
+                                                            file_prefix="histogram_channel")
+                        except ValueError as e:
+                            logging.warning(f"\t\t\tError while plotting predictions distribution histogram for {preds_distribution_dir_path}: {e}")
 
                         logging.debug("\t\t\tPredictions distribution histogram saved.")
 

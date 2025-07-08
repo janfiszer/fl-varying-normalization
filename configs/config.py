@@ -12,7 +12,7 @@ from configs.enums import *
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.DEBUG,
+    level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S')
 
 # Variable set to true for testing locally
@@ -21,8 +21,8 @@ logging.basicConfig(
 LOCAL = False
 
 # DEEP LEARNING PARAMETERS
-BATCH_SIZE = 32
-LEARNING_RATE = 0.01
+BATCH_SIZE = 64
+LEARNING_RATE = 0.001
 DROPOUT_RATE = 0.0
 NUM_WORKERS = 8
 # model parameters 
@@ -78,7 +78,7 @@ MOMENTUM = 0.9
 FEDDELAY_ROUND = 30
 
 # centralized train
-N_EPOCHS_CENTRALIZED = 32
+N_EPOCHS_CENTRALIZED = 16
 
 # file names and paths
 PROJECT_NAME = "fl-varying-normalization"
